@@ -13,18 +13,23 @@ class DeathKnight:
         self.change_x = 0
         self.change_y = 0
 
-        self.anim_run = []
+        self.anim_run_right = []
+        self.anim_run_left = []
         self.current_texture_run = 0
         self.texture_change_time_run = 0
-        self.texture_change_delay_run = 0.1
+        self.texture_change_delay_run = 0.2
 
         self.run = False
 
         self.loading_texture()
-        self.anim_run.append(self.one_shot_run)
-        self.anim_run.append(self.two_shot_run)
-        self.anim_run.append(self.three_shot_run)
-        self.anim_run.append(self.four_shot_run)
+        self.anim_run_right.append(self.one_shot_run)
+        self.anim_run_right.append(self.two_shot_run)
+        self.anim_run_right.append(self.three_shot_run)
+        self.anim_run_right.append(self.four_shot_run)
+        self.anim_run_left.append(self.one_shot_run_left)
+        self.anim_run_left.append(self.two_shot_run_left)
+        self.anim_run_left.append(self.three_shot_run_left)
+        self.anim_run_left.append(self.four_shot_run_left)
 
         self.player_sprite = arcade.Sprite()
         self.player_sprite.texture = self.tex_default
@@ -43,32 +48,43 @@ class DeathKnight:
         self.player_sprite.center_x = self.center_x
         self.player_sprite.center_y = self.center_y
 
-        if self.change_x > 0 and self.run == False:
-            self.player_sprite.texture = self.tex_right
+        if self.change_x > 0:
             self.facing = "right"
-        elif self.change_x < 0 and self.run == False:
-            self.player_sprite.texture = self.tex_left
+        elif self.change_x < 0:
             self.facing = "left"
-        elif self.change_x == 0 and self.run == False:
-            self.player_sprite.texture = self.tex_default
+        elif self.change_x == 0:
             self.facing = "default"
+
+        if self.run:
+            self.update_animation(delta_time)
+        else:
+            if self.facing == "right":
+                self.player_sprite.texture = self.tex_right
+            elif self.facing == "left":
+                self.player_sprite.texture = self.tex_left
+            else:
+                self.player_sprite.texture = self.tex_default
 
         if self.run:
             self.update_animation(delta_time)
 
     def update_animation(self, delta_time: float = 1 / 60):
         if self.run:
-            self.texture_change_time_run += delta_time
-            if self.texture_change_time_run >= self.texture_change_delay_run:
-                self.texture_change_time_run = 0
-                self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run)
+            if self.facing == "right":
+                self.texture_change_time_run += delta_time
+                if self.texture_change_time_run >= self.texture_change_delay_run:
+                    self.texture_change_time_run = 0
+                    self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_right)
+                    texture = self.anim_run_right[self.current_texture_run]
+                    self.player_sprite.texture = texture
+            elif self.facing == "left":
+                self.texture_change_time_run += delta_time
+                if self.texture_change_time_run >= self.texture_change_delay_run:
+                    self.texture_change_time_run = 0
+                    self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_left)
+                    texture = self.anim_run_left[self.current_texture_run]
+                    self.player_sprite.texture = texture
 
-                texture = self.anim_run[self.current_texture_run]
-
-                if self.facing == "left":
-                    pass
-
-                self.player_sprite.texture = texture
 
     def loading_texture(self):
         self.tex_default = arcade.load_texture("models/hero/death_knight/main_form.png")
@@ -79,6 +95,10 @@ class DeathKnight:
         self.two_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/2_faze_run.png")
         self.three_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/3_faze_run.png")
         self.four_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/4_faze_run.png")
+        self.one_shot_run_left  = self.one_shot_run.flip_left_right()
+        self.two_shot_run_left = self.two_shot_run.flip_left_right()
+        self.three_shot_run_left = self.three_shot_run.flip_left_right()
+        self.four_shot_run_left = self.four_shot_run.flip_left_right()
 
     def draw(self):
         self.player_sprite_list.draw()
