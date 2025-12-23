@@ -1,17 +1,24 @@
 import arcade
+from arcade import Camera2D
+
 
 class DeathKnight:
-    def __init__(self, x, y, speed=100, scale=50, number_player=1):
+    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None, jump_speed=40, gravity=7, coyote_time=None):
         self.speed = speed
         self.hp = 3
         self.scale = scale
 
         self.number_player = number_player
+        self.jump_speed = jump_speed
+        self.gravity = gravity
+
+        self.gui_camera = Camera2D()
 
         self.center_x = x
         self.center_y = y
         self.change_x = 0
         self.change_y = 0
+        self.up = False
 
         self.anim_run_right = []
         self.anim_run_left = []
@@ -42,11 +49,10 @@ class DeathKnight:
         self.player_sprite_list = arcade.SpriteList()
         self.player_sprite_list.append(self.player_sprite)
 
-    def update(self, delta_time):
-        self.center_x += self.change_x * delta_time
-        self.center_y += self.change_y * delta_time
-        self.player_sprite.center_x = self.center_x
-        self.player_sprite.center_y = self.center_y
+        self.physicks_engine = arcade.PhysicsEnginePlatformer(self.player_sprite, colision_sprites)
+
+    def on_update(self, delta_time):
+        self.player_sprite.change_x = self.change_x * delta_time
 
         if self.change_x > 0:
             self.facing = "right"
@@ -67,6 +73,9 @@ class DeathKnight:
 
         if self.run:
             self.update_animation(delta_time)
+
+        if self.up:
+            self.physicks_engine.jump(self.jump_speed)
 
     def update_animation(self, delta_time: float = 1 / 60):
         if self.run:
@@ -106,9 +115,8 @@ class DeathKnight:
     def on_key_press(self, key, modifiers):
         if self.number_player == 1:
             if key == arcade.key.W:
-                self.change_y = self.speed
-            elif key == arcade.key.S:
-                self.change_y = -self.speed
+                if self.physicks_engine.can_jump():
+                    self.physicks_engine.jump(self.jump_speed)
             elif key == arcade.key.A:
                 self.change_x = -self.speed
                 self.run = True
@@ -117,9 +125,8 @@ class DeathKnight:
                 self.change_x = self.speed
         elif self.number_player == 2:
             if key == arcade.key.UP:
-                self.change_y = self.speed
-            elif key == arcade.key.DOWN:
-                self.change_y = -self.speed
+                if self.physicks_engine.can_jump():
+                    self.physicks_engine.jump(self.jump_speed)
             elif key == arcade.key.LEFT:
                 self.change_x = -self.speed
                 self.run = True
@@ -129,16 +136,12 @@ class DeathKnight:
 
     def on_key_release(self, key, modifiers):
         if self.number_player == 1:
-            if key == arcade.key.W or key == arcade.key.S:
-                self.change_y = 0
-            elif key == arcade.key.A or key == arcade.key.D:
+            if key == arcade.key.A or key == arcade.key.D:
                 self.change_x = 0
                 self.run = False
                 self.current_texture_run = 0
         elif self.number_player == 2:
-            if key == arcade.key.UP or key == arcade.key.DOWN:
-                self.change_y = 0
-            elif key == arcade.key.LEFT or key == arcade.key.RIGHT:
+            if key == arcade.key.LEFT or key == arcade.key.RIGHT:
                 self.change_x = 0
                 self.run = False
                 self.current_texture_run = 0
