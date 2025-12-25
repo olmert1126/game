@@ -2,7 +2,7 @@ import arcade
 
 
 class DeathKnight:
-    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None, jump_speed=40, gravity=7):
+    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None, jump_speed=40, gravity=7, coyote_time=None):
         self.speed = speed
         self.hp = 3
         self.scale = scale
