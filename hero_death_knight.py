@@ -1,9 +1,8 @@
 import arcade
-from arcade import Camera2D
 
 
 class DeathKnight:
-    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None, jump_speed=40, gravity=7, coyote_time=None):
+    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None, jump_speed=40, gravity=7):
         self.speed = speed
         self.hp = 3
         self.scale = scale
@@ -11,8 +10,6 @@ class DeathKnight:
         self.number_player = number_player
         self.jump_speed = jump_speed
         self.gravity = gravity
-
-        self.gui_camera = Camera2D()
 
         self.center_x = x
         self.center_y = y

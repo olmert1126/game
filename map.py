@@ -1,5 +1,6 @@
 import arcade
 from arcade.examples.camera_platform import GRAVITY
+from arcade import Camera2D
 
 import hero_death_knight
 
@@ -26,6 +27,8 @@ class Map(arcade.Window):
         self.platform = test_map.sprite_lists["platforms"]
         self.all_colosion_sprites.extend(self.walls)
         self.all_colosion_sprites.extend(self.platform)
+
+        self.player1_camera = Camera2D()
 
         all_sprites = arcade.SpriteList()
         all_sprites.extend(self.walls)
@@ -56,6 +59,7 @@ class Map(arcade.Window):
     def on_draw(self):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
+        self.player1_camera.use()
         self.player1.draw()
         self.walls.draw()
         self.platform.draw()
@@ -64,6 +68,8 @@ class Map(arcade.Window):
         self.player1.on_update(delta_time)
         self.player1.change_y -= GRAVITY
         self.physics_engine_player1.update()
+
+        self.player1_camera.position = (self.player1.player_sprite.center_x, self.player1.player_sprite.center_y)
 
     def on_key_press(self, key, modifiers):
         self.player1.on_key_press(key, modifiers)
