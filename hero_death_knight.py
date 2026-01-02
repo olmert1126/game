@@ -22,8 +22,12 @@ class DeathKnight:
         self.current_texture_run = 0
         self.texture_change_time_run = 0
         self.texture_change_delay_run = 0.2
-
         self.run = False
+
+        self.anim_jump = []
+        self.current_texture_jump = 0
+        self.texture_change_time_jump = 0
+        self.texture_change_delay_jump = 0.2
 
         self.loading_texture()
         self.anim_run_right.append(self.one_shot_run)
@@ -34,6 +38,11 @@ class DeathKnight:
         self.anim_run_left.append(self.two_shot_run_left)
         self.anim_run_left.append(self.three_shot_run_left)
         self.anim_run_left.append(self.four_shot_run_left)
+
+        self.anim_jump.append(self.one_shot_jump)
+        self.anim_jump.append(self.two_shot_jump)
+        self.anim_jump.append(self.three_shot_jump)
+        self.anim_jump.append(self.four_shot_jump)
 
         self.player_sprite = arcade.Sprite()
         self.player_sprite.texture = self.tex_default
@@ -46,10 +55,15 @@ class DeathKnight:
         self.player_sprite_list = arcade.SpriteList()
         self.player_sprite_list.append(self.player_sprite)
 
-        self.physicks_engine = arcade.PhysicsEnginePlatformer(self.player_sprite, colision_sprites)
+        self.physicks_engine = arcade.PhysicsEnginePlatformer(
+            self.player_sprite,
+            colision_sprites,
+            gravity_constant=self.gravity,
+        )
 
     def on_update(self, delta_time):
-        self.player_sprite.change_x = self.change_x * delta_time
+        self.physicks_engine.update()
+        self.player_sprite.change_x = self.change_x
 
         if self.change_x > 0:
             self.facing = "right"
@@ -58,7 +72,14 @@ class DeathKnight:
         elif self.change_x == 0:
             self.facing = "default"
 
-        if self.run:
+        if self.physicks_engine.can_jump():
+            if self.up:
+                self.up = False
+                self.current_texture_jump = 0
+
+        if self.up:
+            self.update_animation(delta_time, jump=True)
+        elif self.run:
             self.update_animation(delta_time)
         else:
             if self.facing == "right":
@@ -68,13 +89,7 @@ class DeathKnight:
             else:
                 self.player_sprite.texture = self.tex_default
 
-        if self.run:
-            self.update_animation(delta_time)
-
-        if self.up:
-            self.physicks_engine.jump(self.jump_speed)
-
-    def update_animation(self, delta_time: float = 1 / 60):
+    def update_animation(self, delta_time: float = 1 / 60, jump=False):
         if self.run:
             if self.facing == "right":
                 self.texture_change_time_run += delta_time
@@ -90,6 +105,13 @@ class DeathKnight:
                     self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_left)
                     texture = self.anim_run_left[self.current_texture_run]
                     self.player_sprite.texture = texture
+        if jump:
+            self.texture_change_time_jump += delta_time
+            if self.texture_change_time_jump >= self.texture_change_delay_jump:
+                self.texture_change_time_jump = 0
+                self.current_texture_jump = (self.current_texture_jump + 1) % len(self.anim_jump)
+                texture = self.anim_jump[self.current_texture_jump]
+                self.player_sprite.texture = texture
 
 
     def loading_texture(self):
@@ -106,6 +128,11 @@ class DeathKnight:
         self.three_shot_run_left = self.three_shot_run.flip_left_right()
         self.four_shot_run_left = self.four_shot_run.flip_left_right()
 
+        self.one_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump1.png")
+        self.two_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump2.png")
+        self.three_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump3.png")
+        self.four_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump4.png")
+
     def draw(self):
         self.player_sprite_list.draw()
 
@@ -114,6 +141,9 @@ class DeathKnight:
             if key == arcade.key.W:
                 if self.physicks_engine.can_jump():
                     self.physicks_engine.jump(self.jump_speed)
+                    self.up = True
+                    self.run = False
+                    self.current_texture_jump = 0
             elif key == arcade.key.A:
                 self.change_x = -self.speed
                 self.run = True
@@ -124,6 +154,8 @@ class DeathKnight:
             if key == arcade.key.UP:
                 if self.physicks_engine.can_jump():
                     self.physicks_engine.jump(self.jump_speed)
+                    self.up = True
+                    self.current_texture_jump = 0
             elif key == arcade.key.LEFT:
                 self.change_x = -self.speed
                 self.run = True

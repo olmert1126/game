@@ -4,8 +4,8 @@ import hero_death_knight
 
 # Глобальные константы — можно вынести в отдельный файл
 PLAYER_SIZE = 0.1
-PLAYER_SPEED = 200
-GRAVITY = 7
+PLAYER_SPEED = 5
+GRAVITY = 0.5
 JUMP_SPEED = 25
 
 class GameView(arcade.View):  # ← НАСЛЕДУЕТСЯ ОТ View, НЕ Window!
