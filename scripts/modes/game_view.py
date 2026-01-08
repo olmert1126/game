@@ -1,6 +1,7 @@
 import arcade
 from arcade import Camera2D
 from scripts.characters import hero_death_knight
+from scripts.monsters import slime
 
 # Глобальные константы — можно вынести в отдельный файл
 PLAYER_SIZE = 0.1
@@ -17,6 +18,7 @@ class GameView(arcade.View):  # ← НАСЛЕДУЕТСЯ ОТ View, НЕ Windo
         self.player2 = None
         self.camera = None
         self.physics_engine = None
+        self.slime = None
 
     def setup(self):
         # Загрузка карты
@@ -54,8 +56,17 @@ class GameView(arcade.View):  # ← НАСЛЕДУЕТСЯ ОТ View, НЕ Windo
             gravity=GRAVITY
         )
 
-        self.physics_engine1 = self.player1.physicks_engine
-        self.physics_engine2 = self.player2.physicks_engine
+        self.slime = slime.Slime(
+            self.window.width / 2,
+            self.window.height / 2,
+            colision_sprites=all_collision,
+            gravity=GRAVITY
+        )
+
+        self.physics_engine_player1 = self.player1.physicks_engine
+        self.physics_engine_player2 = self.player2.physicks_engine
+        self.physics_engine_slime = self.slime.physicks_engine
+
 
         # Центрируем карту по окну
         all_sprites = arcade.SpriteList()
@@ -88,12 +99,16 @@ class GameView(arcade.View):  # ← НАСЛЕДУЕТСЯ ОТ View, НЕ Windo
         self.platform.draw()
         self.player1.draw()
         self.player2.draw()
+        self.slime.draw()
 
     def on_update(self, delta_time):
         self.player1.on_update(delta_time)
         self.player2.on_update(delta_time)
-        self.physics_engine1.update()
-        self.physics_engine2.update()
+        self.physics_engine_player1.update()
+        self.physics_engine_player2.update()
+
+        self.slime.on_update(delta_time)
+        self.slime.update_animation(delta_time)
 
         # Двигаем камеру за игроком
         self.camera.position = self.player1.player_sprite.position
