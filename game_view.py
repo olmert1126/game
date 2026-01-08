@@ -14,6 +14,7 @@ class GameView(arcade.View):  # ← НАСЛЕДУЕТСЯ ОТ View, НЕ Windo
         self.walls = None
         self.platform = None
         self.player1 = None
+        self.player2 = None
         self.camera = None
         self.physics_engine = None
 
@@ -43,7 +44,18 @@ class GameView(arcade.View):  # ← НАСЛЕДУЕТСЯ ОТ View, НЕ Windo
             gravity=GRAVITY
         )
 
-        self.physics_engine = self.player1.physicks_engine
+        self.player2 = hero_death_knight.DeathKnight(
+            start_x, start_y,
+            speed=PLAYER_SPEED,
+            scale=PLAYER_SIZE,
+            number_player=2,
+            colision_sprites=all_collision,
+            jump_speed=JUMP_SPEED,
+            gravity=GRAVITY
+        )
+
+        self.physics_engine1 = self.player1.physicks_engine
+        self.physics_engine2 = self.player2.physicks_engine
 
         # Центрируем карту по окну
         all_sprites = arcade.SpriteList()
@@ -75,16 +87,21 @@ class GameView(arcade.View):  # ← НАСЛЕДУЕТСЯ ОТ View, НЕ Windo
         self.walls.draw()
         self.platform.draw()
         self.player1.draw()
+        self.player2.draw()
 
     def on_update(self, delta_time):
         self.player1.on_update(delta_time)
-        self.physics_engine.update()
+        self.player2.on_update(delta_time)
+        self.physics_engine1.update()
+        self.physics_engine2.update()
 
         # Двигаем камеру за игроком
         self.camera.position = self.player1.player_sprite.position
 
     def on_key_press(self, key, modifiers):
         self.player1.on_key_press(key, modifiers)
+        self.player2.on_key_press(key, modifiers)
 
     def on_key_release(self, key, modifiers):
         self.player1.on_key_release(key, modifiers)
+        self.player2.on_key_release(key, modifiers)

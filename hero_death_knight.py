@@ -155,6 +155,7 @@ class DeathKnight:
                 if self.physicks_engine.can_jump():
                     self.physicks_engine.jump(self.jump_speed)
                     self.up = True
+                    self.run = False
                     self.current_texture_jump = 0
             elif key == arcade.key.LEFT:
                 self.change_x = -self.speed
