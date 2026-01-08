@@ -1,5 +1,5 @@
 import arcade
-from game_view import GameView
+from scripts.modes.game_view import GameView
 from arcade.gui import UIFlatButton, UIManager
 
 class StartView(arcade.View):
@@ -25,7 +25,7 @@ class StartView(arcade.View):
 
         self.manager.add(self.flat_button)
 
-    def on_show_view(self):  # ← лучше использовать on_show_view
+    def on_show_view(self):
         arcade.set_background_color(arcade.color.BLACK)
 
     def on_draw(self):

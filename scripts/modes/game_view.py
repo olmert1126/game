@@ -1,6 +1,6 @@
 import arcade
 from arcade import Camera2D
-import hero_death_knight
+from scripts.characters import hero_death_knight
 
 # Глобальные константы — можно вынести в отдельный файл
 PLAYER_SIZE = 0.1

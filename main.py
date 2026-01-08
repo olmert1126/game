@@ -1,5 +1,5 @@
 import arcade
-from start_view import StartView
+from scripts.modes.start_view import StartView
 
 def main():
     # Создаём ОДНО окно
