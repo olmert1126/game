@@ -110,8 +110,34 @@ class GameView(arcade.View):  # ← НАСЛЕДУЕТСЯ ОТ View, НЕ Windo
         self.slime.on_update(delta_time)
         self.slime.update_animation(delta_time)
 
+        self.resolve_collision(self.player1.player_sprite, self.slime.slime_sprite)
+        self.resolve_collision(self.player2.player_sprite, self.slime.slime_sprite)
+        self.resolve_collision(self.player1.player_sprite, self.player2.player_sprite)
+
         # Двигаем камеру за игроком
         self.camera.position = self.player1.player_sprite.position
+
+    def resolve_collision(self, sprite1, sprite2):
+        """Раздвигает два спрайта, если они пересекаются."""
+        if arcade.check_for_collision(sprite1, sprite2):
+
+            dx = sprite1.center_x - sprite2.center_x
+            dy = sprite1.center_y - sprite2.center_y
+            distance = max(0.1, (dx ** 2 + dy ** 2) ** 0.5)
+
+            # Минимальное расстояние, чтобы не пересекались
+            min_dist = (sprite1.width + sprite2.width) / 2 * 0.8
+
+            if distance < min_dist:
+                dx /= distance
+                dy /= distance
+
+                # Сдвигаем поровну в противоположные стороны
+                overlap = (min_dist - distance) / 2
+                sprite1.center_x += dx * overlap
+                sprite1.center_y += dy * overlap
+                sprite2.center_x -= dx * overlap
+                sprite2.center_y -= dy * overlap
 
     def on_key_press(self, key, modifiers):
         self.player1.on_key_press(key, modifiers)
