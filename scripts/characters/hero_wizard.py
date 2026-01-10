@@ -112,23 +112,23 @@ class Wizard:
 
 
     def loading_texture(self):
-        self.tex_default = arcade.load_texture("models/hero/death_knight/main_form.png")
-        self.tex_right = arcade.load_texture("models/hero/death_knight/main_form_right.png")
+        self.tex_default = arcade.load_texture("models/hero/wizard/wizard.png")
+        self.tex_right = arcade.load_texture("models/hero/wizard/wizard_right.png")
         self.tex_left = self.tex_right.flip_left_right()
 
-        self.one_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/1_faze_run.png")
-        self.two_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/2_faze_run.png")
-        self.three_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/3_faze_run.png")
-        self.four_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/4_faze_run.png")
+        self.one_shot_run = arcade.load_texture("models/hero/wizard/animations/run/1_faze_run.png")
+        self.two_shot_run = arcade.load_texture("models/hero/wizard/animations/run/2_faze_run.png")
+        self.three_shot_run = arcade.load_texture("models/hero/wizard/animations/run/3_faze_run.png")
+        self.four_shot_run = arcade.load_texture("models/hero/wizard/animations/run/4_faze_run.png")
         self.one_shot_run_left  = self.one_shot_run.flip_left_right()
         self.two_shot_run_left = self.two_shot_run.flip_left_right()
         self.three_shot_run_left = self.three_shot_run.flip_left_right()
         self.four_shot_run_left = self.four_shot_run.flip_left_right()
 
-        self.one_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump1.png")
-        self.two_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump2.png")
-        self.three_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump3.png")
-        self.four_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump4.png")
+        self.one_shot_jump = arcade.load_texture("models/hero/wizard/animations/jump/jump1.png")
+        self.two_shot_jump = arcade.load_texture("models/hero/wizard/animations/jump/jump2.png")
+        self.three_shot_jump = arcade.load_texture("models/hero/wizard/animations/jump/jump3.png")
+        self.four_shot_jump = arcade.load_texture("models/hero/wizard/animations/jump/jump4.png")
 
     def draw(self):
         self.player_sprite_list.draw()
