@@ -1,6 +1,6 @@
 import arcade
 from arcade import Camera2D
-from scripts.characters import hero_death_knight
+from scripts.characters import hero_death_knight, hero_wizard
 from scripts.monsters import slime
 
 # Глобальные константы
@@ -61,7 +61,7 @@ class GameView(arcade.View):
             gravity=GRAVITY
         )
 
-        self.player2 = hero_death_knight.DeathKnight(
+        self.player2 = hero_wizard.Wizard(
             start_x + 50, start_y,
             speed=PLAYER_SPEED,
             scale=PLAYER_SIZE,

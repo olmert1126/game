@@ -2,10 +2,11 @@ import arcade
 
 
 class Wizard:
-    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None, jump_speed=40, gravity=7, coyote_time=None):
+    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None, jump_speed=40, gravity=7, hp=250):
         self.speed = speed
-        self.hp = 3
+        self.hp = hp
         self.scale = scale
+        self.is_alive = True
 
         self.number_player = number_player
         self.jump_speed = jump_speed
@@ -55,14 +56,14 @@ class Wizard:
         self.player_sprite_list = arcade.SpriteList()
         self.player_sprite_list.append(self.player_sprite)
 
-        self.physicks_engine = arcade.PhysicsEnginePlatformer(
+        self.physics_engine = arcade.PhysicsEnginePlatformer(
             self.player_sprite,
             colision_sprites,
             gravity_constant=self.gravity,
         )
 
     def on_update(self, delta_time):
-        self.physicks_engine.update()
+        self.physics_engine.update()
         self.player_sprite.change_x = self.change_x
 
         if self.change_x > 0:
@@ -72,7 +73,7 @@ class Wizard:
         elif self.change_x == 0:
             self.facing = "default"
 
-        if self.physicks_engine.can_jump():
+        if self.physics_engine.can_jump():
             if self.up:
                 self.up = False
                 self.current_texture_jump = 0
@@ -136,11 +137,23 @@ class Wizard:
     def draw(self):
         self.player_sprite_list.draw()
 
+    def take_damage(self, damage):
+        if not self.is_alive:
+            return
+        self.hp -= damage
+        if self.hp <= 0:
+            self.death()
+        print(f"Нанесено урона {damage} хп {self.hp}")
+
+    def death(self):
+        self.is_alive = False
+        print("Погиб")
+
     def on_key_press(self, key, modifiers):
         if self.number_player == 1:
             if key == arcade.key.W:
-                if self.physicks_engine.can_jump():
-                    self.physicks_engine.jump(self.jump_speed)
+                if self.physics_engine.can_jump():
+                    self.physics_engine.jump(self.jump_speed)
                     self.up = True
                     self.run = False
                     self.current_texture_jump = 0
@@ -152,8 +165,8 @@ class Wizard:
                 self.change_x = self.speed
         elif self.number_player == 2:
             if key == arcade.key.UP:
-                if self.physicks_engine.can_jump():
-                    self.physicks_engine.jump(self.jump_speed)
+                if self.physics_engine.can_jump():
+                    self.physics_engine.jump(self.jump_speed)
                     self.up = True
                     self.run = False
                     self.current_texture_jump = 0
