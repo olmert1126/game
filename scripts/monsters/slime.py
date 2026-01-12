@@ -12,6 +12,7 @@ class Slime:
         self.players = players  # список игроков
         self.damage = damage
         self.damage_cooldown = damage_cooldown
+        self._last_damage_times = [0.0] * len(players)
 
         self.center_x = x
         self.center_y = y
