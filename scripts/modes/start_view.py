@@ -27,6 +27,8 @@ class StartView(arcade.View):
 
     def on_show_view(self):
         arcade.set_background_color(arcade.color.BLACK)
+        self.flat_button.center_x = self.window.width / 2
+        self.flat_button.center_y = self.window.height / 2 - 100
 
     def on_draw(self):
         self.clear()
