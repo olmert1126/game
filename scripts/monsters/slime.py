@@ -1,7 +1,7 @@
 import arcade
 
 class Slime:
-    def __init__(self, x, y, collision_sprites, gravity=0.5):
+    def __init__(self, x, y, collision_sprites, players, gravity=0.5, damage=45, damage_cooldown=1.0):
         self.loading_texture()
         self.slime_sprites_list = arcade.SpriteList()
 
@@ -9,6 +9,9 @@ class Slime:
         self.facing = "right"
 
         self.gravity = gravity
+        self.players = players  # список игроков
+        self.damage = damage
+        self.damage_cooldown = damage_cooldown
 
         self.center_x = x
         self.center_y = y
@@ -72,7 +75,6 @@ class Slime:
         direction = 1 if self.facing == "right" else -1
         next_x = self.slime_sprite.center_x + self.speed * direction
 
-        # Создаём тестовые спрайты для проверки
         test_front = arcade.Sprite(center_x=next_x, center_y=self.slime_sprite.center_y)
         test_front.texture = self.main_form
         test_front.scale = self.slime_sprite.scale
@@ -84,6 +86,17 @@ class Slime:
             self.slime_sprite.center_x = next_x
 
         self.update_animation(delta_time)
+
+        # === НАНЕСЕНИЕ УРОНА ИГРОКАМ ===
+        for i, player in enumerate(self.players):
+            if not player.is_alive:
+                continue
+
+            if arcade.check_for_collision(self.slime_sprite, player.player_sprite):
+                self._last_damage_times[i] += delta_time
+                if self._last_damage_times[i] >= self.damage_cooldown:
+                    player.take_damage(self.damage)
+                    self._last_damage_times[i] = 0.0
 
     def _reverse_direction(self):
         self.facing = "left" if self.facing == "right" else "right"

@@ -75,7 +75,10 @@ class GameView(arcade.View):
             x=self.window.width / 2 - 400,
             y=self.window.height / 2,
             collision_sprites=collision_slime,
-            gravity=GRAVITY
+            players=[self.player1, self.player2],  # ← передаём игроков
+            gravity=GRAVITY,
+            damage=SLIME_DAMAGE,
+            damage_cooldown=DAMAGE_COOLDOWN
         )
 
         # Центрируем карту по окну
@@ -131,23 +134,6 @@ class GameView(arcade.View):
 
         # Обновление слизня
         self.slime.on_update(delta_time)
-
-        # Урон от слизня
-        if self.player1.is_alive and arcade.check_for_collision(
-            self.player1.player_sprite, self.slime.slime_sprite
-        ):
-            self._last_damage_time_p1 += delta_time
-            if self._last_damage_time_p1 >= DAMAGE_COOLDOWN:
-                self.player1.take_damage(SLIME_DAMAGE)
-                self._last_damage_time_p1 = 0.0
-
-        if self.player2.is_alive and arcade.check_for_collision(
-            self.player2.player_sprite, self.slime.slime_sprite
-        ):
-            self._last_damage_time_p2 += delta_time
-            if self._last_damage_time_p2 >= DAMAGE_COOLDOWN:
-                self.player2.take_damage(SLIME_DAMAGE)
-                self._last_damage_time_p2 = 0.0
 
         # Коллизия между игроками (если оба живы)
         if self.player1.is_alive and self.player2.is_alive:
