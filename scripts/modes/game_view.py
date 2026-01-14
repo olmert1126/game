@@ -1,7 +1,7 @@
 import arcade
 from arcade import Camera2D
 from scripts.characters import hero_death_knight, hero_wizard
-from scripts.monsters import slime
+from scripts.monsters import slime, skeleton
 from arcade import LBWH, XYWH
 
 # Глобальные константы
@@ -11,6 +11,9 @@ GRAVITY = 0.5
 JUMP_SPEED = 25
 SLIME_DAMAGE = 45
 DAMAGE_COOLDOWN = 1.0
+SKELETON_DAMAGE = 30
+SKELETON_ATTACK_RANGE = 2000
+SKELETON_ATTACK_COOLDOWN = 2.0
 
 
 class GameView(arcade.View):
@@ -24,6 +27,7 @@ class GameView(arcade.View):
         self.camera = None
         self.ui_camera = None  # ← НОВАЯ UI-камера
         self.slime = None
+        self.skeleton = None
         self.HP_bar = None
         self.HP_bar_sprite_list = arcade.SpriteList()
 
@@ -87,6 +91,17 @@ class GameView(arcade.View):
             damage_cooldown=DAMAGE_COOLDOWN
         )
 
+        self.skeleton = skeleton.Skeleton(
+            x=self.window.width / 2 - 400,
+            y=self.window.height / 2,
+            collision_sprites=collision_slime,
+            players=[self.player1, self.player2],
+            gravity=GRAVITY,
+            damage=SKELETON_DAMAGE,
+            attack_range=SKELETON_ATTACK_RANGE,
+            attack_cooldown=SKELETON_ATTACK_COOLDOWN
+        )
+
         hp_sprite_p1 = arcade.Sprite()
         hp_sprite_p1.texture = self.HP_bar
         hp_sprite_p2 = arcade.Sprite()
@@ -134,6 +149,7 @@ class GameView(arcade.View):
         if self.player2.is_alive:
             self.player2.draw()
         self.slime.draw()
+        self.skeleton.draw()
 
         # UI
         self.ui_camera.use()
@@ -169,6 +185,9 @@ class GameView(arcade.View):
 
         # Слизень
         self.slime.on_update(delta_time)
+
+        # Скелет
+        self.skeleton.on_update(delta_time)
 
         # Коллизия между игроками
         if self.player1.is_alive and self.player2.is_alive:
