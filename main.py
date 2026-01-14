@@ -7,7 +7,7 @@ def main():
         width=arcade.get_display_size()[0] - 60,
         height=arcade.get_display_size()[1] - 60,
         title="Игра",
-        fullscreen=False
+        fullscreen=True
     )
 
     # Показываем стартовое меню
