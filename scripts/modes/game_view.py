@@ -216,8 +216,8 @@ class GameView(arcade.View):
         bar_height = self.HP_bar.height * 0.5
 
         # Подобранные отступы (увеличь, если линия заходит на шарики)
-        padding_left = 155  # ← увеличено! было 30 → теперь 35
-        padding_right = 155  # ← увеличено!
+        padding_left = 30  # ← увеличено! было 30 → теперь 35
+        padding_right = 30  # ← увеличено!
         inner_height = 50
 
         inner_width = bar_width - padding_left - padding_right
