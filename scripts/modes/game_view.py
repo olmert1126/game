@@ -1,7 +1,7 @@
 import arcade
 from arcade import Camera2D
 from scripts.characters import hero_death_knight, hero_wizard
-from scripts.monsters import slime
+from scripts.monsters import slime, skeleton
 from arcade import LBWH, XYWH
 
 # Глобальные константы
@@ -11,6 +11,9 @@ GRAVITY = 0.5
 JUMP_SPEED = 25
 SLIME_DAMAGE = 45
 DAMAGE_COOLDOWN = 1.0
+SKELETON_DAMAGE = 30
+SKELETON_ATTACK_RANGE = 1500
+SKELETON_ATTACK_COOLDOWN = 2.0
 
 
 class GameView(arcade.View):
@@ -24,6 +27,9 @@ class GameView(arcade.View):
         self.camera = None
         self.ui_camera = None  # ← НОВАЯ UI-камера
         self.slime = None
+        self.skeleton = None
+        self.sword_sprite = None
+        self.sword_collected = False
         self.HP_bar = None
         self.HP_bar_sprite_list = arcade.SpriteList()
 
@@ -87,6 +93,17 @@ class GameView(arcade.View):
             damage_cooldown=DAMAGE_COOLDOWN
         )
 
+        self.skeleton = skeleton.Skeleton(
+            x=self.window.width / 2 - 400,
+            y=self.window.height / 2,
+            collision_sprites=collision_slime,
+            players=[self.player1, self.player2],
+            gravity=GRAVITY,
+            damage=SKELETON_DAMAGE,
+            attack_range=SKELETON_ATTACK_RANGE,
+            attack_cooldown=SKELETON_ATTACK_COOLDOWN
+        )
+
         hp_sprite_p1 = arcade.Sprite()
         hp_sprite_p1.texture = self.HP_bar
         hp_sprite_p2 = arcade.Sprite()
@@ -105,6 +122,18 @@ class GameView(arcade.View):
         all_sprites.extend(self.platform)
         all_sprites.extend(self.invis)
 
+        # Меч (предмет на земле)
+        sword_x = self.window.width / 2 - 100   # ← можно взять из TMX-слоя позже
+        sword_y = self.window.height / 2 - 50
+
+        self.sword_list = arcade.SpriteList()
+        self.sword_sprite = arcade.Sprite("models/items/sword.png")
+        self.sword_list.append(self.sword_sprite)
+        self.sword_sprite.center_x = sword_x
+        self.sword_sprite.center_y = sword_y
+        self.sword_sprite.scale = 0.15
+        self.sword_collected = False
+
         if len(all_sprites) > 0:
             left = min(s.left for s in all_sprites)
             right = max(s.right for s in all_sprites)
@@ -121,6 +150,10 @@ class GameView(arcade.View):
                 sprite.center_x += dx
                 sprite.center_y += dy
 
+            # Центрируем меч вместе с картой
+            self.sword_sprite.center_x += dx
+            self.sword_sprite.center_y += dy
+
     def on_draw(self):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
@@ -129,11 +162,14 @@ class GameView(arcade.View):
         self.camera.use()
         self.walls.draw()
         self.platform.draw()
+        if not self.sword_collected:
+            self.sword_list.draw()
         if self.player1.is_alive:
             self.player1.draw()
         if self.player2.is_alive:
             self.player2.draw()
         self.slime.draw()
+        self.skeleton.draw()
 
         # UI
         self.ui_camera.use()
@@ -170,9 +206,23 @@ class GameView(arcade.View):
         # Слизень
         self.slime.on_update(delta_time)
 
+        # Скелет
+        self.skeleton.on_update(delta_time)
+
         # Коллизия между игроками
         if self.player1.is_alive and self.player2.is_alive:
             self.resolve_collision(self.player1.player_sprite, self.player2.player_sprite)
+
+        # Проверка подбора меча
+        if not self.sword_collected:
+            collected_by_p1 = (self.player1.is_alive and
+                               arcade.check_for_collision(self.sword_sprite, self.player1.player_sprite))
+
+
+            if collected_by_p1:
+                self.sword_collected = True
+                # Можно добавить звук, эффект или усилить игрока
+                print("Меч подобран!")
 
         # Камера следует за первым живым игроком
         if self.player1.is_alive:
