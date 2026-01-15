@@ -309,6 +309,7 @@ class GameView(arcade.View):
         if self.player2.is_alive:
             self.player2.draw()
         self.slime.draw()
+        self.skeleton.draw()lj,fdbkd
 
     def on_key_release(self, key, modifiers):
         if self.player1.is_alive:
