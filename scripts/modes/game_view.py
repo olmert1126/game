@@ -30,6 +30,8 @@ class GameView(arcade.View):
         self.skeleton = None
         self.sword_sprite = None
         self.sword_collected = False
+        self.staff_list = None
+        self.staff_collected = False
         self.HP_bar = None
         self.HP_bar_sprite_list = arcade.SpriteList()
 
@@ -129,6 +131,19 @@ class GameView(arcade.View):
         all_sprites.extend(self.platform)
         all_sprites.extend(self.invis)
 
+        # Посох
+        staff_x = self.window.width / 2 + 100   # чуть правее центра
+        staff_y = self.window.height / 2 - 50
+
+        self.staff_list = arcade.SpriteList()
+        staff_sprite = arcade.Sprite("models/items/staff.png")
+        staff_sprite.center_x = staff_x
+        staff_sprite.center_y = staff_y
+        staff_sprite.scale = 0.15
+        self.staff_list.append(staff_sprite)
+        self.staff_collected = False
+
+
         # Меч (предмет на земле)
         sword_x = self.window.width / 2 - 100   # ← можно взять из TMX-слоя позже
         sword_y = self.window.height / 2 - 50
@@ -210,6 +225,13 @@ class GameView(arcade.View):
                 self.sword_collected = True
                 # Можно добавить звук, эффект или усилить игрока
                 print("Меч подобран!")
+
+        if not self.staff_collected and self.staff_list:
+            staff = self.staff_list[0]
+            if self.player2.is_alive and arcade.check_for_collision(staff, self.player2.player_sprite):
+                self.staff_collected = True
+                self.staff_list.clear()
+                print("Посох подобран!")
 
         # Камера следует за первым живым игроком
         if self.player1.is_alive:
@@ -306,6 +328,10 @@ class GameView(arcade.View):
         self.platform.draw()
         if self.player1.is_alive:
             self.player1.draw()
+        if not self.sword_collected:
+            self.sword_list.draw()
+        if not self.staff_collected:
+            self.staff_list.draw()
         if self.player2.is_alive:
             self.player2.draw()
         self.slime.draw()
