@@ -57,8 +57,15 @@ class GameView(arcade.View):
         collision_slime.extend(self.invis)
 
         # Камеры
-        self.camera = Camera2D()
-        self.ui_camera = Camera2D()  # ← UI-камера: всегда "смотрит" на (0, 0)
+        self.camera_player1 = Camera2D()
+        self.camera_player1.viewport = arcade.LBWH(0, 0, self.window.width // 2, self.window.height)
+
+        self.camera_player2 = Camera2D()
+        self.camera_player2.viewport = arcade.LBWH(self.window.width // 2, 0, self.window.width // 2,
+                                                   self.window.height)
+        self.camera_player1.zoom = 1.2
+        self.camera_player2.zoom = 1.2
+        self.ui_camera = Camera2D()  # по умолчанию весь экран
 
         start_x = self.window.width / 2 - 200
         start_y = self.window.height / 2
@@ -158,37 +165,17 @@ class GameView(arcade.View):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
 
-        # Игровой мир
-        self.camera.use()
-        self.walls.draw()
-        self.platform.draw()
-        if not self.sword_collected:
-            self.sword_list.draw()
-        if self.player1.is_alive:
-            self.player1.draw()
-        if self.player2.is_alive:
-            self.player2.draw()
-        self.slime.draw()
-        self.skeleton.draw()
+        # Рисуем левую часть
+        self.camera_player1.use()
+        self._draw_game_world()
 
-        # UI
+        # Рисуем правую часть
+        self.camera_player2.use()
+        self._draw_game_world()
+
+        # UI — рисуем поверх всего, используя отдельную UI-камеру без viewport'а
         self.ui_camera.use()
-
-        if len(self.HP_bar_sprite_list) >= 2:
-            p1 = self.HP_bar_sprite_list[0]
-            p2 = self.HP_bar_sprite_list[1]
-
-            # Левый верхний угол
-            p1.center_x = p1.width / 2
-            p1.center_y = self.window.height - p1.height / 2
-
-            # Правый верхний угол
-            p2.center_x = self.window.width - p2.width / 2
-            p2.center_y = self.window.height - p2.height / 2
-
-        # Рисуем все HP-бары
-        self.HP_bar_sprite_list.draw()
-        self.draw_hp_fill()
+        self._draw_ui()
 
     def on_update(self, delta_time):
         # Обновление игроков
@@ -226,9 +213,25 @@ class GameView(arcade.View):
 
         # Камера следует за первым живым игроком
         if self.player1.is_alive:
-            self.camera.position = self.player1.player_sprite.position
-        elif self.player2.is_alive:
-            self.camera.position = self.player2.player_sprite.position
+            self.camera_player1.position = self.player1.player_sprite.position
+        if self.player2.is_alive:
+            self.camera_player2.position = self.player2.player_sprite.position
+
+    def _draw_ui(self):
+        if len(self.HP_bar_sprite_list) >= 2:
+            p1 = self.HP_bar_sprite_list[0]
+            p2 = self.HP_bar_sprite_list[1]
+
+            # Левый верхний угол — для игрока 1
+            p1.center_x = p1.width / 2
+            p1.center_y = self.window.height - p1.height / 2
+
+            # Правый верхний угол — для игрока 2
+            p2.center_x = self.window.width - p2.width / 2
+            p2.center_y = self.window.height - p2.height / 2
+
+        self.HP_bar_sprite_list.draw()
+        self.draw_hp_fill()
 
     def resolve_collision(self, sprite1, sprite2):
         """Раздвигает два спрайта при пересечении."""
@@ -255,36 +258,30 @@ class GameView(arcade.View):
         if self.player2.is_alive:
             self.player2.on_key_press(key, modifiers)
 
-
     def draw_hp_fill(self):
         """Рисует заполнение строго внутри полосы, не заходя на шарики."""
         if not self.player1.is_alive and not self.player2.is_alive:
             return
 
-        # Размеры бара с учётом масштаба
         bar_width = self.HP_bar.width * 0.5
         bar_height = self.HP_bar.height * 0.5
 
-        # Подобранные отступы (увеличь, если линия заходит на шарики)
-        padding_left = 30  # ← увеличено! было 30 → теперь 35
-        padding_right = 30  # ← увеличено!
+        padding_left = 30
+        padding_right = 30
         inner_height = 50
-
         inner_width = bar_width - padding_left - padding_right
 
         # === Игрок 1 (левый) ===
         if self.player1.is_alive:
             ratio = max(0.0, min(1.0, self.player1.hp / self.player1.max_hp))
             fill_width = inner_width * ratio
-
             if fill_width > 0:
                 arcade.draw_rect_filled(
                     LBWH(
-                        left=padding_left,  # начинаем после левого шарика
-                        bottom=self.window.height - bar_height + (bar_height - inner_height) // 2,
-                        # по центру по высоте
-                        width=fill_width,
-                        height=inner_height
+                        padding_left,
+                        self.window.height - bar_height + (bar_height - inner_height) // 2,
+                        fill_width,
+                        inner_height
                     ),
                     color=arcade.color.GREEN
                 )
@@ -293,17 +290,25 @@ class GameView(arcade.View):
         if self.player2.is_alive:
             ratio = max(0.0, min(1.0, self.player2.hp / self.player2.max_hp))
             fill_width = inner_width * ratio
-
             if fill_width > 0:
                 arcade.draw_rect_filled(
                     LBWH(
-                        left=self.window.width - bar_width + padding_left,  # начинаем после правого шарика
-                        bottom=self.window.height - bar_height + (bar_height - inner_height) // 2,
-                        width=fill_width,
-                        height=inner_height
+                        self.window.width - bar_width + padding_left,
+                        self.window.height - bar_height + (bar_height - inner_height) // 2,
+                        fill_width,
+                        inner_height
                     ),
                     color=arcade.color.BLUE
                 )
+
+    def _draw_game_world(self):
+        self.walls.draw()
+        self.platform.draw()
+        if self.player1.is_alive:
+            self.player1.draw()
+        if self.player2.is_alive:
+            self.player2.draw()
+        self.slime.draw()
 
     def on_key_release(self, key, modifiers):
         if self.player1.is_alive:
