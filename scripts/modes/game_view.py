@@ -310,6 +310,8 @@ class GameView(arcade.View):
             self.player2.draw()
         self.slime.draw()
         self.skeleton.draw()
+        if not self.sword_collected:
+            self.sword_list.draw()
 
     def on_key_release(self, key, modifiers):
         if self.player1.is_alive:
