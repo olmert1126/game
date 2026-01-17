@@ -238,44 +238,9 @@ class GameView(arcade.View):
                 print("Посох подобран!")
 
         if self.slime.is_alive:
-            for player in [self.player1]:  # или [self.player1, self.player2]
-                if not player.is_alive or not player.is_attacking or not player.weapon:
-                    continue
-                if getattr(player, 'has_dealt_damage_this_attack', False):
-                    continue
-
-                # Используем параметры из оружия!
-                offset_x = player.weapon.attack_range if player.facing == "right" else -player.weapon.attack_range
-                hitbox = arcade.Sprite()
-                hitbox.center_x = player.player_sprite.center_x + offset_x
-                hitbox.center_y = player.player_sprite.center_y
-                hitbox.width = player.weapon.attack_width
-                hitbox.height = player.weapon.attack_height
-
-
-                if arcade.check_for_collision(hitbox, self.slime.slime_sprite):
-                    self.slime.take_damage(player.weapon.damage)
-                    player.has_dealt_damage_this_attack = True
-                    break
-
+            self._check_attack_hit(self.player1, self.slime.slime_sprite, self.slime)
         if self.skeleton.is_alive:
-            for player in [self.player1]:  # или [self.player1, self.player2]
-                if not player.is_alive or not player.is_attacking or not player.weapon:
-                    continue
-                if getattr(player, 'has_dealt_damage_this_attack', False):
-                    continue
-
-                offset_x = player.weapon.attack_range if player.facing == "right" else -player.weapon.attack_range
-                hitbox = arcade.Sprite()
-                hitbox.center_x = player.player_sprite.center_x + offset_x
-                hitbox.center_y = player.player_sprite.center_y
-                hitbox.width = player.weapon.attack_width
-                hitbox.height = player.weapon.attack_height
-
-                if arcade.check_for_collision(hitbox, self.skeleton.skeleton_sprite):
-                    self.skeleton.take_damage(player.weapon.damage)
-                    player.has_dealt_damage_this_attack = True
-                    break
+            self._check_attack_hit(self.player1, self.skeleton.skeleton_sprite, self.skeleton)
 
         # Камера следует за первым живым игроком
         if self.player1.is_alive:
@@ -394,3 +359,22 @@ class GameView(arcade.View):
     def loading_texture(self):
         self.HP_bar = arcade.load_texture("models/UI/HP_bar.png")
         self.HP_bar_p2 = self.HP_bar.flip_left_right()
+
+    def _check_attack_hit(self, player, target_sprite, target_object):
+        if not player.is_alive or not player.is_attacking or not player.weapon:
+            return False
+        if getattr(player, 'has_dealt_damage_this_attack', False):
+            return False
+
+        offset_x = player.weapon.attack_range if player.facing == "right" else -player.weapon.attack_range
+        hitbox = arcade.Sprite()
+        hitbox.center_x = player.player_sprite.center_x + offset_x
+        hitbox.center_y = player.player_sprite.center_y
+        hitbox.width = player.weapon.attack_width
+        hitbox.height = player.weapon.attack_height
+
+        if arcade.check_for_collision(hitbox, target_sprite):
+            target_object.take_damage(player.weapon.damage)
+            player.has_dealt_damage_this_attack = True
+            return True
+        return False
