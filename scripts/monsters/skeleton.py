@@ -8,6 +8,9 @@ class Skeleton:
 
         self.speed = 2
         self.facing = "right"
+        self.hp = 100
+        self.max_hp = self.hp
+        self.is_alive = True
 
         self.gravity = gravity
         self.players = players
@@ -134,6 +137,8 @@ class Skeleton:
         self.arrow_list.append(arrow)
 
     def on_update(self, delta_time):
+        if not self.is_alive:
+            return
         # Физика и стрелы
         self.physics_engine.update()
 
@@ -217,3 +222,15 @@ class Skeleton:
     def draw(self):
         self.skeleton_sprites_list.draw()
         self.arrow_list.draw()
+
+    def take_damage(self, damage):
+        if not self.is_alive:
+            return
+        self.hp -= damage
+        print(f"Скелет получил {damage} урона. Осталось HP: {self.hp}")
+        if self.hp <= 0:
+            self.death()
+
+    def death(self):
+        self.is_alive = False
+        print("Скелет умер!")

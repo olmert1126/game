@@ -30,6 +30,7 @@ class StartView(arcade.View):
         self.flat_button.center_x = self.window.width / 2
         self.flat_button.center_y = self.window.height / 2 - 100
 
+
     def on_draw(self):
         self.clear()
         arcade.draw_text(

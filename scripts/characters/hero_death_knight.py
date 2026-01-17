@@ -1,15 +1,21 @@
-from idlelib.configdialog import help_pages
-
 import arcade
 
 
 class DeathKnight:
-    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None, jump_speed=40, gravity=7, hp=300):
+    def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None,
+                 jump_speed=40, gravity=7, hp=300, weapon=None):
         self.speed = speed
         self.hp = hp
         self.max_hp = hp
         self.scale = scale
         self.is_alive = True
+        self.weapon = weapon
+
+        self.is_attacking = False
+        self.has_dealt_damage_this_attack = False
+        self.texture_change_time_attack = 0
+        self.texture_change_delay_attack = 0.2
+        self.current_texture_attack = 0
 
         self.number_player = number_player
         self.jump_speed = jump_speed
@@ -18,15 +24,15 @@ class DeathKnight:
         self.center_x = x
         self.center_y = y
         self.change_x = 0
-        self.change_y = 0
         self.up = False
+        self.run = False
 
+        # Анимации
         self.anim_run_right = []
         self.anim_run_left = []
         self.current_texture_run = 0
         self.texture_change_time_run = 0
         self.texture_change_delay_run = 0.2
-        self.run = False
 
         self.anim_jump = []
         self.current_texture_jump = 0
@@ -34,27 +40,15 @@ class DeathKnight:
         self.texture_change_delay_jump = 0.2
 
         self.loading_texture()
-        self.anim_run_right.append(self.one_shot_run)
-        self.anim_run_right.append(self.two_shot_run)
-        self.anim_run_right.append(self.three_shot_run)
-        self.anim_run_right.append(self.four_shot_run)
-        self.anim_run_left.append(self.one_shot_run_left)
-        self.anim_run_left.append(self.two_shot_run_left)
-        self.anim_run_left.append(self.three_shot_run_left)
-        self.anim_run_left.append(self.four_shot_run_left)
 
-        self.anim_jump.append(self.one_shot_jump)
-        self.anim_jump.append(self.two_shot_jump)
-        self.anim_jump.append(self.three_shot_jump)
-        self.anim_jump.append(self.four_shot_jump)
-
+        # Спрайт — начинаем с "вправо"
         self.player_sprite = arcade.Sprite()
-        self.player_sprite.texture = self.tex_default
+        self.player_sprite.texture = self.tex_right
         self.player_sprite.center_x = self.center_x
         self.player_sprite.center_y = self.center_y
         self.player_sprite.scale = self.scale
 
-        self.facing = "default"
+        self.facing = "right"  # всегда left/right
 
         self.player_sprite_list = arcade.SpriteList()
         self.player_sprite_list.append(self.player_sprite)
@@ -65,77 +59,137 @@ class DeathKnight:
             gravity_constant=self.gravity,
         )
 
+    def loading_texture(self):
+        self.tex_right = arcade.load_texture("models/hero/death_knight/main_form_right.png")
+        self.tex_left = self.tex_right.flip_left_right()
+
+        # Бег
+        run_paths = [
+            "models/hero/death_knight/animations/run/1_faze_run.png",
+            "models/hero/death_knight/animations/run/2_faze_run.png",
+            "models/hero/death_knight/animations/run/3_faze_run.png",
+            "models/hero/death_knight/animations/run/4_faze_run.png"
+        ]
+        self.anim_run_right = [arcade.load_texture(path) for path in run_paths]
+        self.anim_run_left = [tex.flip_left_right() for tex in self.anim_run_right]
+
+        # Прыжок
+        jump_paths = [
+            "models/hero/death_knight/animations/jump/jump1.png",
+            "models/hero/death_knight/animations/jump/jump2.png",
+            "models/hero/death_knight/animations/jump/jump3.png",
+            "models/hero/death_knight/animations/jump/jump4.png"
+        ]
+        self.anim_jump = [arcade.load_texture(path) for path in jump_paths]
+
     def on_update(self, delta_time):
         self.physics_engine.update()
         self.player_sprite.change_x = self.change_x
 
+        # Обновляем направление
         if self.change_x > 0:
             self.facing = "right"
         elif self.change_x < 0:
             self.facing = "left"
-        elif self.change_x == 0:
-            self.facing = "default"
 
+        # Сбрасываем прыжок при приземлении
         if self.physics_engine.can_jump():
-            if self.up:
-                self.up = False
-                self.current_texture_jump = 0
+            self.up = False
 
-        if self.up:
+        # Приоритет: атака > прыжок > бег > idle
+        if self.is_attacking and self.weapon:
+            self.update_animation(delta_time, is_attacking=True)
+        elif self.up:
             self.update_animation(delta_time, jump=True)
         elif self.run:
-            self.update_animation(delta_time)
+            self.update_animation(delta_time, run=True)
         else:
-            if self.facing == "right":
-                self.player_sprite.texture = self.tex_right
-            elif self.facing == "left":
-                self.player_sprite.texture = self.tex_left
-            else:
-                self.player_sprite.texture = self.tex_default
+            # Idle — просто ставим текстуру
+            self.player_sprite.texture = self.tex_right if self.facing == "right" else self.tex_left
 
-    def update_animation(self, delta_time: float = 1 / 60, jump=False):
-        if self.run:
-            if self.facing == "right":
-                self.texture_change_time_run += delta_time
-                if self.texture_change_time_run >= self.texture_change_delay_run:
-                    self.texture_change_time_run = 0
-                    self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_right)
-                    texture = self.anim_run_right[self.current_texture_run]
-                    self.player_sprite.texture = texture
-            elif self.facing == "left":
-                self.texture_change_time_run += delta_time
-                if self.texture_change_time_run >= self.texture_change_delay_run:
-                    self.texture_change_time_run = 0
-                    self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_left)
-                    texture = self.anim_run_left[self.current_texture_run]
-                    self.player_sprite.texture = texture
+    def update_animation(self, delta_time, is_attacking=False, jump=False, run=False):
+        if is_attacking and self.weapon:
+            self.texture_change_time_attack += delta_time
+            frames = self.weapon.attack_frames_right if self.facing == "right" else self.weapon.attack_frames_left
+
+            if frames and self.texture_change_time_attack >= self.texture_change_delay_attack:
+                self.texture_change_time_attack = 0
+                self.current_texture_attack += 1
+
+                if self.current_texture_attack < len(frames):
+                    self.player_sprite.texture = frames[self.current_texture_attack]
+                else:
+                    self.is_attacking = False
+                    self.current_texture_attack = 0  # сброс
+                    self.has_dealt_damage_this_attack = False
+                    self.player_sprite.texture = self.tex_right if self.facing == "right" else self.tex_left
+            return
+
         if jump:
             self.texture_change_time_jump += delta_time
             if self.texture_change_time_jump >= self.texture_change_delay_jump:
                 self.texture_change_time_jump = 0
                 self.current_texture_jump = (self.current_texture_jump + 1) % len(self.anim_jump)
-                texture = self.anim_jump[self.current_texture_jump]
-                self.player_sprite.texture = texture
+                self.player_sprite.texture = self.anim_jump[self.current_texture_jump]
 
+        elif run:
+            self.texture_change_time_run += delta_time
+            if self.texture_change_time_run >= self.texture_change_delay_run:
+                self.texture_change_time_run = 0
+                if self.facing == "right":
+                    self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_right)
+                    self.player_sprite.texture = self.anim_run_right[self.current_texture_run]
+                else:
+                    self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_left)
+                    self.player_sprite.texture = self.anim_run_left[self.current_texture_run]
 
-    def loading_texture(self):
-        self.tex_default = arcade.load_texture("models/hero/death_knight/main_form.png")
-        self.tex_right = arcade.load_texture("models/hero/death_knight/main_form_right.png")
-        self.tex_left = self.tex_right.flip_left_right()
+    def start_attack(self):
+        if not self.is_attacking and self.weapon:
+            self.is_attacking = True
+            self.has_dealt_damage_this_attack = False  # ← сброс
+            self.texture_change_time_attack = 0
+            self.current_texture_attack = 0
+            frames = self.weapon.attack_frames_right if self.facing == "right" else self.weapon.attack_frames_left
+            if frames:
+                self.player_sprite.texture = frames[0]
 
-        self.one_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/1_faze_run.png")
-        self.two_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/2_faze_run.png")
-        self.three_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/3_faze_run.png")
-        self.four_shot_run = arcade.load_texture("models/hero/death_knight/animations/run/4_faze_run.png")
-        self.one_shot_run_left  = self.one_shot_run.flip_left_right()
-        self.two_shot_run_left = self.two_shot_run.flip_left_right()
-        self.three_shot_run_left = self.three_shot_run.flip_left_right()
-        self.four_shot_run_left = self.four_shot_run.flip_left_right()
+    def on_key_press(self, key, modifiers):
+        if self.number_player == 1:
+            if key == arcade.key.W and self.physics_engine.can_jump():
+                self.physics_engine.jump(self.jump_speed)
+                self.up = True
+                self.run = False
+            elif key == arcade.key.A:
+                self.change_x = -self.speed
+                self.run = True
+            elif key == arcade.key.D:
+                self.change_x = self.speed
+                self.run = True
+            elif key == arcade.key.E:
+                self.start_attack()
+        elif self.number_player == 2:
+            if key == arcade.key.UP and self.physics_engine.can_jump():
+                self.physics_engine.jump(self.jump_speed)
+                self.up = True
+                self.run = False
+            elif key == arcade.key.LEFT:
+                self.change_x = -self.speed
+                self.run = True
+            elif key == arcade.key.RIGHT:
+                self.change_x = self.speed
+                self.run = True
+            elif key == arcade.key.NUM_0:
+                self.start_attack()
 
-        self.one_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump1.png")
-        self.two_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump2.png")
-        self.three_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump3.png")
-        self.four_shot_jump = arcade.load_texture("models/hero/death_knight/animations/jump/jump4.png")
+    def on_key_release(self, key, modifiers):
+        if self.number_player == 1:
+            if key in (arcade.key.A, arcade.key.D):
+                self.change_x = 0
+                self.run = False
+        elif self.number_player == 2:
+            if key in (arcade.key.LEFT, arcade.key.RIGHT):
+                self.change_x = 0
+                self.run = False
 
     def draw(self):
         self.player_sprite_list.draw()
@@ -146,48 +200,17 @@ class DeathKnight:
         self.hp -= damage
         if self.hp <= 0:
             self.death()
-        print(f"Нанесено урона {damage} хп {self.hp}")
+        print(f"Нанесено урона {damage}, осталось ХП: {self.hp}")
 
     def death(self):
         self.is_alive = False
         print("Погиб")
 
-    def on_key_press(self, key, modifiers):
-        if self.number_player == 1:
-            if key == arcade.key.W:
-                if self.physics_engine.can_jump():
-                    self.physics_engine.jump(self.jump_speed)
-                    self.up = True
-                    self.run = False
-                    self.current_texture_jump = 0
-            elif key == arcade.key.A:
-                self.change_x = -self.speed
-                self.run = True
-            elif key == arcade.key.D:
-                self.run = True
-                self.change_x = self.speed
-        elif self.number_player == 2:
-            if key == arcade.key.UP:
-                if self.physics_engine.can_jump():
-                    self.physics_engine.jump(self.jump_speed)
-                    self.up = True
-                    self.run = False
-                    self.current_texture_jump = 0
-            elif key == arcade.key.LEFT:
-                self.change_x = -self.speed
-                self.run = True
-            elif key == arcade.key.RIGHT:
-                self.change_x = self.speed
-                self.run = True
+    def equip_weapon(self, weapon):
+        self.weapon = weapon
+        print(f"Подобрано оружие: {weapon.name}")
 
-    def on_key_release(self, key, modifiers):
-        if self.number_player == 1:
-            if key == arcade.key.A or key == arcade.key.D:
-                self.change_x = 0
-                self.run = False
-                self.current_texture_run = 0
-        elif self.number_player == 2:
-            if key == arcade.key.LEFT or key == arcade.key.RIGHT:
-                self.change_x = 0
-                self.run = False
-                self.current_texture_run = 0
+    @property
+    def is_hitting_frame(self):
+        # Например, второй кадр (индекс 1) — момент удара
+        return self.is_attacking and self.current_texture_attack == 2

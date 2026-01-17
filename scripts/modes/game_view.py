@@ -2,7 +2,8 @@ import arcade
 from arcade import Camera2D
 from scripts.characters import hero_death_knight, hero_wizard
 from scripts.monsters import slime, skeleton
-from arcade import LBWH, XYWH
+from arcade import LBWH
+from scripts.weapon import sword
 
 # Глобальные константы
 PLAYER_SIZE = 0.1
@@ -33,6 +34,7 @@ class GameView(arcade.View):
         self.staff_list = None
         self.staff_collected = False
         self.HP_bar = None
+        self.sword_weapon = None
         self.HP_bar_sprite_list = arcade.SpriteList()
 
         self.loading_texture()
@@ -113,6 +115,9 @@ class GameView(arcade.View):
             attack_cooldown=SKELETON_ATTACK_COOLDOWN
         )
 
+        self.sword_weapon = sword.Weapon.create_sword()
+        self.sword_weapon.load_attack_animations("models/hero/death_knight/animations/attack_sword", frame_count=3)
+
         hp_sprite_p1 = arcade.Sprite()
         hp_sprite_p1.texture = self.HP_bar
         hp_sprite_p2 = arcade.Sprite()
@@ -132,7 +137,7 @@ class GameView(arcade.View):
         all_sprites.extend(self.invis)
 
         # Посох
-        staff_x = self.window.width / 2 + 100   # чуть правее центра
+        staff_x = self.window.width / 2 + 100  # чуть правее центра
         staff_y = self.window.height / 2 - 50
 
         self.staff_list = arcade.SpriteList()
@@ -143,9 +148,8 @@ class GameView(arcade.View):
         self.staff_list.append(staff_sprite)
         self.staff_collected = False
 
-
-        # Меч (предмет на земле)
-        sword_x = self.window.width / 2 - 100   # ← можно взять из TMX-слоя позже
+        # Меч
+        sword_x = self.window.width / 2 - 100
         sword_y = self.window.height / 2 - 50
 
         self.sword_list = arcade.SpriteList()
@@ -220,10 +224,10 @@ class GameView(arcade.View):
             collected_by_p1 = (self.player1.is_alive and
                                arcade.check_for_collision(self.sword_sprite, self.player1.player_sprite))
 
-
             if collected_by_p1:
+                self.player1.equip_weapon(self.sword_weapon)  # ← теперь через self
                 self.sword_collected = True
-                # Можно добавить звук, эффект или усилить игрока
+                self.sword_list.clear()
                 print("Меч подобран!")
 
         if not self.staff_collected and self.staff_list:
@@ -232,6 +236,46 @@ class GameView(arcade.View):
                 self.staff_collected = True
                 self.staff_list.clear()
                 print("Посох подобран!")
+
+        if self.slime.is_alive:
+            for player in [self.player1]:  # или [self.player1, self.player2]
+                if not player.is_alive or not player.is_attacking or not player.weapon:
+                    continue
+                if getattr(player, 'has_dealt_damage_this_attack', False):
+                    continue
+
+                # Используем параметры из оружия!
+                offset_x = player.weapon.attack_range if player.facing == "right" else -player.weapon.attack_range
+                hitbox = arcade.Sprite()
+                hitbox.center_x = player.player_sprite.center_x + offset_x
+                hitbox.center_y = player.player_sprite.center_y
+                hitbox.width = player.weapon.attack_width
+                hitbox.height = player.weapon.attack_height
+
+
+                if arcade.check_for_collision(hitbox, self.slime.slime_sprite):
+                    self.slime.take_damage(player.weapon.damage)
+                    player.has_dealt_damage_this_attack = True
+                    break
+
+        if self.skeleton.is_alive:
+            for player in [self.player1]:  # или [self.player1, self.player2]
+                if not player.is_alive or not player.is_attacking or not player.weapon:
+                    continue
+                if getattr(player, 'has_dealt_damage_this_attack', False):
+                    continue
+
+                offset_x = player.weapon.attack_range if player.facing == "right" else -player.weapon.attack_range
+                hitbox = arcade.Sprite()
+                hitbox.center_x = player.player_sprite.center_x + offset_x
+                hitbox.center_y = player.player_sprite.center_y
+                hitbox.width = player.weapon.attack_width
+                hitbox.height = player.weapon.attack_height
+
+                if arcade.check_for_collision(hitbox, self.skeleton.skeleton_sprite):
+                    self.skeleton.take_damage(player.weapon.damage)
+                    player.has_dealt_damage_this_attack = True
+                    break
 
         # Камера следует за первым живым игроком
         if self.player1.is_alive:
@@ -334,8 +378,10 @@ class GameView(arcade.View):
             self.staff_list.draw()
         if self.player2.is_alive:
             self.player2.draw()
-        self.slime.draw()
-        self.skeleton.draw()
+        if self.slime.is_alive:
+            self.slime.draw()
+        if self.skeleton.is_alive:
+            self.skeleton.draw()
         if not self.sword_collected:
             self.sword_list.draw()
 
