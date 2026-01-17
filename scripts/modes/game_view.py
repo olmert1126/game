@@ -3,6 +3,7 @@ from arcade import Camera2D
 from scripts.characters import hero_death_knight, hero_wizard
 from scripts.monsters import slime, skeleton
 from arcade import LBWH, XYWH
+from scripts.weapon import sword
 
 # Глобальные константы
 PLAYER_SIZE = 0.1
@@ -33,6 +34,7 @@ class GameView(arcade.View):
         self.staff_list = None
         self.staff_collected = False
         self.HP_bar = None
+        self.sword_weapon = None
         self.HP_bar_sprite_list = arcade.SpriteList()
 
         self.loading_texture()
@@ -112,6 +114,8 @@ class GameView(arcade.View):
             attack_range=SKELETON_ATTACK_RANGE,
             attack_cooldown=SKELETON_ATTACK_COOLDOWN
         )
+
+        self.sword_weapon = sword.Weapon.create_sword()
 
         hp_sprite_p1 = arcade.Sprite()
         hp_sprite_p1.texture = self.HP_bar
@@ -220,10 +224,10 @@ class GameView(arcade.View):
             collected_by_p1 = (self.player1.is_alive and
                                arcade.check_for_collision(self.sword_sprite, self.player1.player_sprite))
 
-
             if collected_by_p1:
+                self.player1.equip_weapon(self.sword_weapon)  # ← теперь через self
                 self.sword_collected = True
-                # Можно добавить звук, эффект или усилить игрока
+                self.sword_list.clear()
                 print("Меч подобран!")
 
         if not self.staff_collected and self.staff_list:
