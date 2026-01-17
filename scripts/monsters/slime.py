@@ -7,6 +7,9 @@ class Slime:
 
         self.speed = 3
         self.facing = "right"
+        self.hp = 100
+        self.max_hp = self.hp
+        self.is_alive = True
 
         self.gravity = gravity
         self.players = players  # список игроков
@@ -86,6 +89,8 @@ class Slime:
         self.two_shot_attack_left = self.two_shot_attack.flip_left_right()
 
     def on_update(self, delta_time):
+        if not self.is_alive:
+            return
         # Обновляем физику
         self.physics_engine.update()
         direction = 1 if self.facing == "right" else -1
@@ -156,3 +161,15 @@ class Slime:
 
     def draw(self):
         self.slime_sprites_list.draw()
+
+    def take_damage(self, damage):
+        if not self.is_alive:
+            return
+        self.hp -= damage
+        print(f"Slime получил {damage} урона. Осталось HP: {self.hp}")
+        if self.hp <= 0:
+            self.death()
+
+    def death(self):
+        self.is_alive = False
+        print("Slime умер!")

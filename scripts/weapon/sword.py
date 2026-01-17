@@ -2,12 +2,18 @@ import arcade
 
 
 class Weapon:
-    def __init__(self, name, damage, attack_duration_frames=3):
+    def __init__(self, name, damage, attack_duration_frames=3,
+                 attack_range=40, attack_width=30, attack_height=50):
         self.name = name
         self.damage = damage
         self.attack_duration_frames = attack_duration_frames
         self.attack_frames_right = []
         self.attack_frames_left = []
+
+        # Параметры зоны атаки
+        self.attack_range = attack_range      # насколько далеко вперёд
+        self.attack_width = attack_width      # ширина хитбокса
+        self.attack_height = attack_height    # высота хитбокса
 
     def load_attack_animations(self, base_path, frame_count):
         """Загружает анимацию атаки по шаблону: base_path/attack1.png, attack2.png и т.д."""
@@ -20,6 +26,11 @@ class Weapon:
 
     @classmethod
     def create_sword(cls):
-        weapon = cls(name="sword", damage=50, attack_duration_frames=3)
-        weapon.load_attack_animations("models/hero/death_knight/animations/attack_sword", 3)
-        return weapon
+        return cls(
+            name="sword",
+            damage=40,
+            attack_duration_frames=3,
+            attack_range=70,
+            attack_width=35,
+            attack_height=60
+        )

@@ -12,6 +12,7 @@ class DeathKnight:
         self.weapon = weapon
 
         self.is_attacking = False
+        self.has_dealt_damage_this_attack = False
         self.texture_change_time_attack = 0
         self.texture_change_delay_attack = 0.2
         self.current_texture_attack = 0
@@ -59,7 +60,6 @@ class DeathKnight:
         )
 
     def loading_texture(self):
-        # Убираем main_form — только left/right
         self.tex_right = arcade.load_texture("models/hero/death_knight/main_form_right.png")
         self.tex_left = self.tex_right.flip_left_right()
 
@@ -121,6 +121,7 @@ class DeathKnight:
                 else:
                     self.is_attacking = False
                     self.current_texture_attack = 0  # сброс
+                    self.has_dealt_damage_this_attack = False
                     self.player_sprite.texture = self.tex_right if self.facing == "right" else self.tex_left
             return
 
@@ -145,6 +146,7 @@ class DeathKnight:
     def start_attack(self):
         if not self.is_attacking and self.weapon:
             self.is_attacking = True
+            self.has_dealt_damage_this_attack = False  # ← сброс
             self.texture_change_time_attack = 0
             self.current_texture_attack = 0
             frames = self.weapon.attack_frames_right if self.facing == "right" else self.weapon.attack_frames_left
@@ -207,3 +209,8 @@ class DeathKnight:
     def equip_weapon(self, weapon):
         self.weapon = weapon
         print(f"Подобрано оружие: {weapon.name}")
+
+    @property
+    def is_hitting_frame(self):
+        # Например, второй кадр (индекс 1) — момент удара
+        return self.is_attacking and self.current_texture_attack == 2
