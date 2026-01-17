@@ -258,6 +258,25 @@ class GameView(arcade.View):
                     player.has_dealt_damage_this_attack = True
                     break
 
+        if self.skeleton.is_alive:
+            for player in [self.player1]:  # или [self.player1, self.player2]
+                if not player.is_alive or not player.is_attacking or not player.weapon:
+                    continue
+                if getattr(player, 'has_dealt_damage_this_attack', False):
+                    continue
+
+                offset_x = player.weapon.attack_range if player.facing == "right" else -player.weapon.attack_range
+                hitbox = arcade.Sprite()
+                hitbox.center_x = player.player_sprite.center_x + offset_x
+                hitbox.center_y = player.player_sprite.center_y
+                hitbox.width = player.weapon.attack_width
+                hitbox.height = player.weapon.attack_height
+
+                if arcade.check_for_collision(hitbox, self.skeleton.skeleton_sprite):
+                    self.skeleton.take_damage(player.weapon.damage)
+                    player.has_dealt_damage_this_attack = True
+                    break
+
         # Камера следует за первым живым игроком
         if self.player1.is_alive:
             self.camera_player1.position = self.player1.player_sprite.position
@@ -361,7 +380,8 @@ class GameView(arcade.View):
             self.player2.draw()
         if self.slime.is_alive:
             self.slime.draw()
-        self.skeleton.draw()
+        if self.skeleton.is_alive:
+            self.skeleton.draw()
         if not self.sword_collected:
             self.sword_list.draw()
 
