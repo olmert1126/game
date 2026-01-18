@@ -4,6 +4,7 @@ from scripts.characters import hero_death_knight, hero_wizard
 from scripts.monsters import slime, skeleton
 from arcade import LBWH
 from scripts.weapon import sword
+import random
 
 # Глобальные константы
 PLAYER_SIZE = 0.1
@@ -15,6 +16,7 @@ DAMAGE_COOLDOWN = 1.0
 SKELETON_DAMAGE = 30
 SKELETON_ATTACK_RANGE = 1500
 SKELETON_ATTACK_COOLDOWN = 2.0
+LOW_HP_THRESHOLD = 0.2
 
 
 class GameView(arcade.View):
@@ -35,7 +37,14 @@ class GameView(arcade.View):
         self.staff_collected = False
         self.HP_bar = None
         self.sword_weapon = None
+        self._prev_hp_p1 = None
+        self._prev_hp_p2 = None
         self.HP_bar_sprite_list = arcade.SpriteList()
+
+        self.shake_timer_p1 = 0.0
+        self.shake_magnitude_p1 = 0
+        self.shake_timer_p2 = 0.0
+        self.shake_magnitude_p2 = 0
 
         self.loading_texture()
 
@@ -244,9 +253,35 @@ class GameView(arcade.View):
 
         # Камера следует за первым живым игроком
         if self.player1.is_alive:
-            self.camera_player1.position = self.player1.player_sprite.position
+            base_x, base_y = self.player1.player_sprite.position
+            if self.shake_timer_p1 > 0:
+                offset_x = random.uniform(-self.shake_magnitude_p1, self.shake_magnitude_p1)
+                offset_y = random.uniform(-self.shake_magnitude_p1, self.shake_magnitude_p1)
+                self.camera_player1.position = (base_x + offset_x, base_y + offset_y)
+                self.shake_timer_p1 -= delta_time
+            else:
+                self.camera_player1.position = (base_x, base_y)
+
+            # Камера игрока 2
         if self.player2.is_alive:
-            self.camera_player2.position = self.player2.player_sprite.position
+            base_x, base_y = self.player2.player_sprite.position
+            if self.shake_timer_p2 > 0:
+                offset_x = random.uniform(-self.shake_magnitude_p2, self.shake_magnitude_p2)
+                offset_y = random.uniform(-self.shake_magnitude_p2, self.shake_magnitude_p2)
+                self.camera_player2.position = (base_x + offset_x, base_y + offset_y)
+                self.shake_timer_p2 -= delta_time
+            else:
+                self.camera_player2.position = (base_x, base_y)
+
+        if self.player1.is_alive:
+            if self._prev_hp_p1 is not None and self.player1.hp < self._prev_hp_p1:
+                self.start_camera_shake(1, duration=0.25, magnitude=8)
+            self._prev_hp_p1 = self.player1.hp
+
+        if self.player2.is_alive:
+            if self._prev_hp_p2 is not None and self.player2.hp < self._prev_hp_p2:
+                self.start_camera_shake(2, duration=0.25, magnitude=8)
+            self._prev_hp_p2 = self.player2.hp
 
     def _draw_ui(self):
         if len(self.HP_bar_sprite_list) >= 2:
@@ -263,6 +298,14 @@ class GameView(arcade.View):
 
         self.HP_bar_sprite_list.draw()
         self.draw_hp_fill()
+
+    def start_camera_shake(self, player_num: int, duration: float = 0.3, magnitude: float = 5.0):
+        if player_num == 1:
+            self.shake_timer_p1 = duration
+            self.shake_magnitude_p1 = magnitude
+        elif player_num == 2:
+            self.shake_timer_p2 = duration
+            self.shake_magnitude_p2 = magnitude
 
     def resolve_collision(self, sprite1, sprite2):
         """Раздвигает два спрайта при пересечении."""
