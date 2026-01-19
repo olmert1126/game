@@ -273,7 +273,7 @@ class GameView(arcade.View):
                 proj.remove_from_sprite_lists()
 
         # Обновление снарядов
-        self.projectiles.update()
+        self.projectiles.update(delta_time)
 
         # Удаление снарядов за пределами экрана
         for proj in self.projectiles:

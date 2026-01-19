@@ -32,23 +32,23 @@ class Wizard:
         self.texture_change_time_jump = 0
         self.texture_change_delay_jump = 0.2
 
-        elf.weapon = None
+        # Оружие и атака (только дальнее)
+        self.weapon = None
         self.is_attacking = False
-        self.has_dealt_damage_this_attack = False
         self.texture_change_time_attack = 0
         self.texture_change_delay_attack = 0.2
         self.current_texture_attack = 0
 
         self.loading_texture()
 
-        # Спрайт — начинаем с нейтральной позы
+        # Спрайт — начинаем с правой стороны
         self.player_sprite = arcade.Sprite()
-        self.player_sprite.texture = self.tex_default
+        self.player_sprite.texture = self.tex_right  # ← не default!
         self.player_sprite.center_x = self.center_x
         self.player_sprite.center_y = self.center_y
         self.player_sprite.scale = self.scale
 
-        self.facing = "default"  # может быть: "left", "right", "default"
+        self.facing = "right"  # всегда "left" или "right"
 
         self.player_sprite_list = arcade.SpriteList()
         self.player_sprite_list.append(self.player_sprite)
@@ -60,7 +60,7 @@ class Wizard:
         )
 
     def loading_texture(self):
-        # Нейтральная стойка (по центру)
+        # Загружаем текстуры (default можно оставить, но не использовать)
         self.tex_default = arcade.load_texture("models/hero/wizard/wizard.png")
         self.tex_right = arcade.load_texture("models/hero/wizard/wizard_right.png")
         self.tex_left = self.tex_right.flip_left_right()
@@ -88,17 +88,17 @@ class Wizard:
         self.physics_engine.update()
         self.player_sprite.change_x = self.change_x
 
+        # Обновляем направление взгляда при движении
         if self.change_x > 0:
             self.facing = "right"
         elif self.change_x < 0:
             self.facing = "left"
-        else:
-            self.facing = "default"
+        # Если change_x == 0 — facing остаётся прежним!
 
         if self.physics_engine.can_jump():
             self.up = False
 
-        # Анимация атаки
+        # Приоритет: атака > прыжок > бег > idle
         if self.is_attacking and self.weapon:
             self.update_animation(delta_time, is_attacking=True)
         elif self.up:
@@ -106,14 +106,13 @@ class Wizard:
         elif self.run:
             self.update_animation(delta_time, run=True)
         else:
+            # Idle: используем текущий facing
             if self.facing == "right":
                 self.player_sprite.texture = self.tex_right
-            elif self.facing == "left":
-                self.player_sprite.texture = self.tex_left
             else:
-                self.player_sprite.texture = self.tex_default
+                self.player_sprite.texture = self.tex_left
 
-    def update_animation(self, delta_time, jump=False, run=False):
+    def update_animation(self, delta_time, is_attacking=False, jump=False, run=False):
         if is_attacking and self.weapon:
             self.texture_change_time_attack += delta_time
             frames = self.weapon.attack_frames_right if self.facing == "right" else self.weapon.attack_frames_left
@@ -131,10 +130,8 @@ class Wizard:
                     # Вернуться в idle
                     if self.facing == "right":
                         self.player_sprite.texture = self.tex_right
-                    elif self.facing == "left":
-                        self.player_sprite.texture = self.tex_left
                     else:
-                        self.player_sprite.texture = self.tex_default
+                        self.player_sprite.texture = self.tex_left
             return
 
         if jump:
@@ -151,7 +148,7 @@ class Wizard:
                 if self.facing == "right":
                     self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_right)
                     self.player_sprite.texture = self.anim_run_right[self.current_texture_run]
-                elif self.facing == "left":
+                else:
                     self.current_texture_run = (self.current_texture_run + 1) % len(self.anim_run_left)
                     self.player_sprite.texture = self.anim_run_left[self.current_texture_run]
 
@@ -180,8 +177,10 @@ class Wizard:
             elif key == arcade.key.RIGHT:
                 self.change_x = self.speed
                 self.run = True
-            elif key == arcade.key.NUM0:
+            elif key == arcade.key.NUM_0:
                 return self.start_attack()
+        return None
+
     def on_key_release(self, key, modifiers):
         if self.number_player == 1:
             if key in (arcade.key.A, arcade.key.D):
@@ -214,17 +213,21 @@ class Wizard:
     def start_attack(self):
         if not self.is_attacking and self.weapon:
             self.is_attacking = True
-            self.has_dealt_damage_this_attack = False
             self.texture_change_time_attack = 0
             self.current_texture_attack = 0
-            frames = self.weapon.attack_frames_right if self.facing == "right" else self.weapon.attack_frames_left
+
+            if self.facing == "right":
+                frames = self.weapon.attack_frames_right
+                shoot_x = self.player_sprite.center_x + 30
+            else:
+                frames = self.weapon.attack_frames_left
+                shoot_x = self.player_sprite.center_x - 30
+
             if frames:
                 self.player_sprite.texture = frames[0]
 
-            if self.weapon.is_ranged:
-                # Позиция выстрела: чуть впереди героя
-                shoot_x = self.center_x + (20 if self.facing == "right" else -20)
-                shoot_y = self.center_y
-                projectile = self.weapon.create_projectile(shoot_x, shoot_y, self.facing)
-                return projectile  # вернём, чтобы добавить в список снарядов
+            shoot_y = self.player_sprite.center_y
+            projectile = self.weapon.create_projectile(shoot_x, shoot_y, self.facing)
+            return projectile
+
         return None
