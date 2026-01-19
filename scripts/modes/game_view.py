@@ -54,7 +54,7 @@ class GameView(arcade.View):
 
     def setup(self):
         # Загрузка карты
-        test_map = arcade.load_tilemap("models/map/test_map/карта.tmx", scaling=1.2)
+        test_map = arcade.load_tilemap("models/map/test_map/map.tmx", scaling=1.2)
         self.walls = test_map.sprite_lists["walls"]
         self.platform = test_map.sprite_lists["platforms"]
         self.invis = test_map.sprite_lists.get("invis", arcade.SpriteList())
