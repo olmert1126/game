@@ -32,7 +32,7 @@ class Wizard:
         self.texture_change_time_jump = 0
         self.texture_change_delay_jump = 0.2
 
-        # Оружие и атака (только дальнее)
+        # Оружие и атака
         self.weapon = None
         self.is_attacking = False
         self.texture_change_time_attack = 0
@@ -43,7 +43,7 @@ class Wizard:
 
         # Спрайт — начинаем с правой стороны
         self.player_sprite = arcade.Sprite()
-        self.player_sprite.texture = self.tex_right  # ← не default!
+        self.player_sprite.texture = self.tex_right
         self.player_sprite.center_x = self.center_x
         self.player_sprite.center_y = self.center_y
         self.player_sprite.scale = self.scale
@@ -60,7 +60,7 @@ class Wizard:
         )
 
     def loading_texture(self):
-        # Загружаем текстуры (default можно оставить, но не использовать)
+        # Загружаем текстуры
         self.tex_default = arcade.load_texture("models/hero/wizard/wizard.png")
         self.tex_right = arcade.load_texture("models/hero/wizard/wizard_right.png")
         self.tex_left = self.tex_right.flip_left_right()
@@ -93,7 +93,7 @@ class Wizard:
             self.facing = "right"
         elif self.change_x < 0:
             self.facing = "left"
-        # Если change_x == 0 — facing остаётся прежним!
+
 
         if self.physics_engine.can_jump():
             self.up = False
