@@ -3,7 +3,8 @@ from arcade import Camera2D
 from scripts.characters import hero_death_knight, hero_wizard
 from scripts.monsters import slime, skeleton
 from arcade import LBWH
-from scripts.weapon import sword
+from scripts.weapon.sword import Weapon as SwordWeapon
+from scripts.weapon.staff import StaffWeapon
 import random
 
 # Глобальные константы
@@ -28,7 +29,7 @@ class GameView(arcade.View):
         self.player1 = None
         self.player2 = None
         self.camera = None
-        self.ui_camera = None  # ← НОВАЯ UI-камера
+        self.ui_camera = None
         self.slime = None
         self.skeleton = None
         self.sword_sprite = None
@@ -37,6 +38,7 @@ class GameView(arcade.View):
         self.staff_collected = False
         self.HP_bar = None
         self.sword_weapon = None
+        self.staff_weapon = None
         self._prev_hp_p1 = None
         self._prev_hp_p2 = None
         self.HP_bar_sprite_list = arcade.SpriteList()
@@ -45,6 +47,9 @@ class GameView(arcade.View):
         self.shake_magnitude_p1 = 0
         self.shake_timer_p2 = 0.0
         self.shake_magnitude_p2 = 0
+
+        # --- НОВОЕ: список снарядов ---
+        self.projectiles = arcade.SpriteList()
 
         self.loading_texture()
 
@@ -58,6 +63,8 @@ class GameView(arcade.View):
         self.walls = test_map.sprite_lists["walls"]
         self.platform = test_map.sprite_lists["platforms"]
         self.invis = test_map.sprite_lists.get("invis", arcade.SpriteList())
+        self.spawn_slimes = test_map.sprite_lists["spawn_slimes"]
+        self.spawn_sceletons = test_map.sprite_lists["spawn_sceletons"]
 
         # Коллизии
         all_collision = arcade.SpriteList()
@@ -69,6 +76,9 @@ class GameView(arcade.View):
         collision_slime.extend(self.platform)
         collision_slime.extend(self.invis)
 
+        slime_spawn = self.spawn_slimes[0]
+        skeleton_spawn = self.spawn_sceletons[0]
+
         # Камеры
         self.camera_player1 = Camera2D()
         self.camera_player1.viewport = arcade.LBWH(0, 0, self.window.width // 2, self.window.height)
@@ -78,64 +88,26 @@ class GameView(arcade.View):
                                                    self.window.height)
         self.camera_player1.zoom = 1.2
         self.camera_player2.zoom = 1.2
-        self.ui_camera = Camera2D()  # по умолчанию весь экран
+        self.ui_camera = Camera2D()
 
         start_x = self.window.width / 2 - 200
         start_y = self.window.height / 2
 
-        self.player1 = hero_death_knight.DeathKnight(
-            start_x, start_y,
-            speed=PLAYER_SPEED,
-            scale=PLAYER_SIZE,
-            number_player=1,
-            colision_sprites=all_collision,
-            jump_speed=JUMP_SPEED,
-            gravity=GRAVITY
-        )
-
-        self.player2 = hero_wizard.Wizard(
-            start_x + 50, start_y,
-            speed=PLAYER_SPEED,
-            scale=PLAYER_SIZE,
-            number_player=2,
-            colision_sprites=all_collision,
-            jump_speed=JUMP_SPEED,
-            gravity=GRAVITY
-        )
-
-        self.slime = slime.Slime(
-            x=self.window.width / 2 - 400,
-            y=self.window.height / 2,
-            collision_sprites=collision_slime,
-            players=[self.player1, self.player2],
-            gravity=GRAVITY,
-            damage=SLIME_DAMAGE,
-            damage_cooldown=DAMAGE_COOLDOWN
-        )
-
-        self.skeleton = skeleton.Skeleton(
-            x=self.window.width / 2 - 400,
-            y=self.window.height / 2,
-            collision_sprites=collision_slime,
-            players=[self.player1, self.player2],
-            gravity=GRAVITY,
-            damage=SKELETON_DAMAGE,
-            attack_range=SKELETON_ATTACK_RANGE,
-            attack_cooldown=SKELETON_ATTACK_COOLDOWN
-        )
-
-        self.sword_weapon = sword.Weapon.create_sword()
+        # Оружие
+        self.sword_weapon = SwordWeapon.create_sword()
         self.sword_weapon.load_attack_animations("models/hero/death_knight/animations/attack_sword", frame_count=3)
 
+        # Посох
+        self.staff_weapon = StaffWeapon.create_staff()
+        self.staff_weapon.load_attack_animations("models/hero/wizard/animations/staff_attack", frame_count=3)
+
+        # HP бары
         hp_sprite_p1 = arcade.Sprite()
         hp_sprite_p1.texture = self.HP_bar
         hp_sprite_p2 = arcade.Sprite()
         hp_sprite_p2.texture = self.HP_bar_p2
-
-        hp_sprite_p2.scale = 0.5
         hp_sprite_p1.scale = 0.5
-
-        # Добавляем в SpriteList
+        hp_sprite_p2.scale = 0.5
         self.HP_bar_sprite_list.append(hp_sprite_p1)
         self.HP_bar_sprite_list.append(hp_sprite_p2)
 
@@ -146,9 +118,8 @@ class GameView(arcade.View):
         all_sprites.extend(self.invis)
 
         # Посох
-        staff_x = self.window.width / 2 + 100  # чуть правее центра
+        staff_x = self.window.width / 2 + 100
         staff_y = self.window.height / 2 - 50
-
         self.staff_list = arcade.SpriteList()
         staff_sprite = arcade.Sprite("models/items/staff.png")
         staff_sprite.center_x = staff_x
@@ -160,7 +131,6 @@ class GameView(arcade.View):
         # Меч
         sword_x = self.window.width / 2 - 100
         sword_y = self.window.height / 2 - 50
-
         self.sword_list = arcade.SpriteList()
         self.sword_sprite = arcade.Sprite("models/items/sword.png")
         self.sword_list.append(self.sword_sprite)
@@ -185,23 +155,67 @@ class GameView(arcade.View):
                 sprite.center_x += dx
                 sprite.center_y += dy
 
-            # Центрируем меч вместе с картой
-            self.sword_sprite.center_x += dx
-            self.sword_sprite.center_y += dy
+            for spawn in self.spawn_slimes:
+                spawn.center_x += dx
+                spawn.center_y += dy
+
+            for spawn in self.spawn_sceletons:
+                spawn.center_x += dx
+                spawn.center_y += dy
+
+        # Игроки
+        self.player1 = hero_death_knight.DeathKnight(
+            start_x, start_y,
+            speed=PLAYER_SPEED,
+            scale=PLAYER_SIZE,
+            number_player=1,
+            colision_sprites=all_collision,
+            jump_speed=JUMP_SPEED,
+            gravity=GRAVITY
+        )
+
+        self.player2 = hero_wizard.Wizard(
+            start_x + 50, start_y,
+            speed=PLAYER_SPEED,
+            scale=PLAYER_SIZE,
+            number_player=2,
+            colision_sprites=all_collision,
+            jump_speed=JUMP_SPEED,
+            gravity=GRAVITY
+        )
+
+        # Монстры
+        self.slime = slime.Slime(
+            x=slime_spawn.center_x,
+            y=slime_spawn.center_y,
+            collision_sprites=collision_slime,
+            players=[self.player1, self.player2],
+            gravity=GRAVITY,
+            damage=SLIME_DAMAGE,
+            damage_cooldown=DAMAGE_COOLDOWN
+        )
+
+        self.skeleton = skeleton.Skeleton(
+            x=skeleton_spawn.center_x,
+            y=skeleton_spawn.center_y,
+            collision_sprites=collision_slime,
+            players=[self.player1, self.player2],
+            gravity=GRAVITY,
+            damage=SKELETON_DAMAGE,
+            attack_range=SKELETON_ATTACK_RANGE,
+            attack_cooldown=SKELETON_ATTACK_COOLDOWN
+        )
 
     def on_draw(self):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
 
-        # Рисуем левую часть
         self.camera_player1.use()
         self._draw_game_world()
 
-        # Рисуем правую часть
         self.camera_player2.use()
         self._draw_game_world()
 
-        # UI — рисуем поверх всего, используя отдельную UI-камеру без viewport'а
         self.ui_camera.use()
         self._draw_ui()
 
@@ -218,40 +232,55 @@ class GameView(arcade.View):
         if self.player2.is_alive:
             self.player2.physics_engine.update()
 
-        # Слизень
+        # Монстры
         self.slime.on_update(delta_time)
-
-        # Скелет
         self.skeleton.on_update(delta_time)
 
         # Коллизия между игроками
         if self.player1.is_alive and self.player2.is_alive:
             self.resolve_collision(self.player1.player_sprite, self.player2.player_sprite)
 
-        # Проверка подбора меча
-        if not self.sword_collected:
-            collected_by_p1 = (self.player1.is_alive and
-                               arcade.check_for_collision(self.sword_sprite, self.player1.player_sprite))
-
-            if collected_by_p1:
-                self.player1.equip_weapon(self.sword_weapon)  # ← теперь через self
+        # Подбор меча
+        if not self.sword_collected and self.player1.is_alive:
+            if arcade.check_for_collision(self.sword_sprite, self.player1.player_sprite):
+                self.player1.equip_weapon(self.sword_weapon)
                 self.sword_collected = True
                 self.sword_list.clear()
                 print("Меч подобран!")
 
-        if not self.staff_collected and self.staff_list:
+        # Подбор посоха
+        if not self.staff_collected and self.staff_list and self.player2.is_alive:
             staff = self.staff_list[0]
-            if self.player2.is_alive and arcade.check_for_collision(staff, self.player2.player_sprite):
+            if arcade.check_for_collision(staff, self.player2.player_sprite):
+                self.player2.equip_weapon(self.staff_weapon)
                 self.staff_collected = True
                 self.staff_list.clear()
                 print("Посох подобран!")
 
+        # Урон от DeathKnight (ближний бой)
         if self.slime.is_alive:
             self._check_attack_hit(self.player1, self.slime.slime_sprite, self.slime)
         if self.skeleton.is_alive:
             self._check_attack_hit(self.player1, self.skeleton.skeleton_sprite, self.skeleton)
 
-        # Камера следует за первым живым игроком
+        # Урон от снарядов (дальний бой)
+        for proj in self.projectiles:
+            if self.slime.is_alive and arcade.check_for_collision(proj, self.slime.slime_sprite):
+                self.slime.take_damage(proj.damage)
+                proj.remove_from_sprite_lists()
+            if self.skeleton.is_alive and arcade.check_for_collision(proj, self.skeleton.skeleton_sprite):
+                self.skeleton.take_damage(proj.damage)
+                proj.remove_from_sprite_lists()
+
+        # Обновление снарядов
+        self.projectiles.update(delta_time)
+
+        # Удаление снарядов за пределами экрана
+        for proj in self.projectiles:
+            if proj.center_x < -200 or proj.center_x > self.window.width + 200:
+                proj.remove_from_sprite_lists()
+
+        # Камеры
         if self.player1.is_alive:
             base_x, base_y = self.player1.player_sprite.position
             if self.shake_timer_p1 > 0:
@@ -262,7 +291,6 @@ class GameView(arcade.View):
             else:
                 self.camera_player1.position = (base_x, base_y)
 
-            # Камера игрока 2
         if self.player2.is_alive:
             base_x, base_y = self.player2.player_sprite.position
             if self.shake_timer_p2 > 0:
@@ -273,6 +301,7 @@ class GameView(arcade.View):
             else:
                 self.camera_player2.position = (base_x, base_y)
 
+        # Камера тряска при получении урона
         if self.player1.is_alive:
             if self._prev_hp_p1 is not None and self.player1.hp < self._prev_hp_p1:
                 self.start_camera_shake(1, duration=0.25, magnitude=8)
@@ -287,12 +316,8 @@ class GameView(arcade.View):
         if len(self.HP_bar_sprite_list) >= 2:
             p1 = self.HP_bar_sprite_list[0]
             p2 = self.HP_bar_sprite_list[1]
-
-            # Левый верхний угол — для игрока 1
             p1.center_x = p1.width / 2
             p1.center_y = self.window.height - p1.height / 2
-
-            # Правый верхний угол — для игрока 2
             p2.center_x = self.window.width - p2.width / 2
             p2.center_y = self.window.height - p2.height / 2
 
@@ -308,14 +333,11 @@ class GameView(arcade.View):
             self.shake_magnitude_p2 = magnitude
 
     def resolve_collision(self, sprite1, sprite2):
-        """Раздвигает два спрайта при пересечении."""
         if not arcade.check_for_collision(sprite1, sprite2):
             return
-
         dx = sprite1.center_x - sprite2.center_x
         dy = sprite1.center_y - sprite2.center_y
         distance = max(0.1, (dx ** 2 + dy ** 2) ** 0.5)
-
         min_dist = (sprite1.width + sprite2.width) / 2 * 0.8
         if distance < min_dist:
             dx /= distance
@@ -330,22 +352,22 @@ class GameView(arcade.View):
         if self.player1.is_alive:
             self.player1.on_key_press(key, modifiers)
         if self.player2.is_alive:
-            self.player2.on_key_press(key, modifiers)
+            proj = self.player2.on_key_press(key, modifiers)  # ← ВАЖНО: player2, не wizard
+            if proj:
+                self.projectiles.append(proj)
 
     def draw_hp_fill(self):
-        """Рисует заполнение строго внутри полосы, не заходя на шарики."""
         if not self.player1.is_alive and not self.player2.is_alive:
             return
 
         bar_width = self.HP_bar.width * 0.5
         bar_height = self.HP_bar.height * 0.5
-
         padding_left = 30
         padding_right = 30
         inner_height = 50
         inner_width = bar_width - padding_left - padding_right
 
-        # === Игрок 1 (левый) ===
+        # Игрок 1
         if self.player1.is_alive:
             ratio = max(0.0, min(1.0, self.player1.hp / self.player1.max_hp))
             fill_width = inner_width * ratio
@@ -360,7 +382,7 @@ class GameView(arcade.View):
                     color=arcade.color.GREEN
                 )
 
-        # === Игрок 2 (правый) ===
+        # Игрок 2
         if self.player2.is_alive:
             ratio = max(0.0, min(1.0, self.player2.hp / self.player2.max_hp))
             fill_width = inner_width * ratio
@@ -380,18 +402,17 @@ class GameView(arcade.View):
         self.platform.draw()
         if self.player1.is_alive:
             self.player1.draw()
+        if self.player2.is_alive:
+            self.player2.draw()
         if not self.sword_collected:
             self.sword_list.draw()
         if not self.staff_collected:
             self.staff_list.draw()
-        if self.player2.is_alive:
-            self.player2.draw()
         if self.slime.is_alive:
             self.slime.draw()
         if self.skeleton.is_alive:
             self.skeleton.draw()
-        if not self.sword_collected:
-            self.sword_list.draw()
+        self.projectiles.draw()  # ← рисуем снаряды
 
     def on_key_release(self, key, modifiers):
         if self.player1.is_alive:
