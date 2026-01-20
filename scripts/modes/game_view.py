@@ -40,6 +40,9 @@ class GameView(arcade.View):
         self._prev_hp_p1 = None
         self._prev_hp_p2 = None
         self.HP_bar_sprite_list = arcade.SpriteList()
+        self.bgm = arcade.load_sound("models/sounds/bgm_dungeon.ogg", streaming=True)
+        self.skeleton_shoot_sound = arcade.load_sound("models/sounds/skeleton_shoot.wav")
+        self.bgm_player = None
 
         self.shake_timer_p1 = 0.0
         self.shake_magnitude_p1 = 0
@@ -58,6 +61,10 @@ class GameView(arcade.View):
         self.walls = test_map.sprite_lists["walls"]
         self.platform = test_map.sprite_lists["platforms"]
         self.invis = test_map.sprite_lists.get("invis", arcade.SpriteList())
+
+        #Звук
+        if self.bgm_player is None or not self.bgm_player.playing:
+            self.bgm_player = arcade.play_sound(self.bgm, looping=True, volume=0.3)
 
         # Коллизии
         all_collision = arcade.SpriteList()

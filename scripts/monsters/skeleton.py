@@ -39,6 +39,9 @@ class Skeleton:
             gravity_constant=self.gravity,
         )
 
+        # Звук
+        self.damage_dealt_this_frame = False
+
         # === АНИМАЦИИ ===
         # Бег
         self.anim_run_right = [
@@ -198,6 +201,7 @@ class Skeleton:
 
         # Обновляем анимацию (ходьба или атака)
         self.update_animation(delta_time)
+
 
     def update_animation(self, delta_time: float = 1 / 60):
         self.texture_change_time_run += delta_time
