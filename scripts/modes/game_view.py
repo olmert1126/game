@@ -65,6 +65,7 @@ class GameView(arcade.View):
         self.invis = test_map.sprite_lists.get("invis", arcade.SpriteList())
         self.spawn_slimes = test_map.sprite_lists["spawn_slimes"]
         self.spawn_sceletons = test_map.sprite_lists["spawn_sceletons"]
+        self.spawn_players = test_map.sprite_lists["spawn_players"]
 
         # Коллизии
         all_collision = arcade.SpriteList()
@@ -90,8 +91,8 @@ class GameView(arcade.View):
         self.camera_player2.zoom = 1.2
         self.ui_camera = Camera2D()
 
-        start_x = self.window.width / 2 - 200
-        start_y = self.window.height / 2
+        self.player1_spawn = self.spawn_players[0]
+        self.player2_spawn = self.spawn_players[1]
 
         # Оружие
         self.sword_weapon = SwordWeapon.create_sword()
@@ -163,9 +164,13 @@ class GameView(arcade.View):
                 spawn.center_x += dx
                 spawn.center_y += dy
 
+            for spawn in self.spawn_players:
+                spawn.center_x += dx
+                spawn.center_y += dy
+
         # Игроки
         self.player1 = hero_death_knight.DeathKnight(
-            start_x, start_y,
+            self.player1_spawn.center_x, self.player1_spawn.center_y,
             speed=PLAYER_SPEED,
             scale=PLAYER_SIZE,
             number_player=1,
@@ -175,7 +180,7 @@ class GameView(arcade.View):
         )
 
         self.player2 = hero_wizard.Wizard(
-            start_x + 50, start_y,
+            self.player2_spawn.center_x, self.player2_spawn.center_y,
             speed=PLAYER_SPEED,
             scale=PLAYER_SIZE,
             number_player=2,
