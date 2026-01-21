@@ -42,6 +42,9 @@ class GameView(arcade.View):
         self._prev_hp_p1 = None
         self._prev_hp_p2 = None
         self.HP_bar_sprite_list = arcade.SpriteList()
+        # Фоновая музыка
+        self.bgm = None
+        self.bgm_player = None
 
         self.shake_timer_p1 = 0.0
         self.shake_magnitude_p1 = 0
@@ -65,6 +68,18 @@ class GameView(arcade.View):
         self.invis = test_map.sprite_lists.get("invis", arcade.SpriteList())
         self.spawn_slimes = test_map.sprite_lists["spawn_slimes"]
         self.spawn_sceletons = test_map.sprite_lists["spawn_sceletons"]
+
+        # Загрузка фоновой музыки через Pyglet (работает всегда)
+        try:
+            import pyglet
+            bgm_source = pyglet.media.load("models/sounds/bgm_dungeon.ogg", streaming=True)
+            self.bgm_player = pyglet.media.Player()
+            self.bgm_player.queue(bgm_source)
+            self.bgm_player.loop = True
+            self.bgm_player.volume = 0.3
+            self.bgm_player.play()
+        except Exception as e:
+            print(f"Не удалось загрузить фоновую музыку: {e}")
 
         # Коллизии
         all_collision = arcade.SpriteList()
