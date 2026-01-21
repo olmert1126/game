@@ -87,15 +87,9 @@ class Skeleton:
         self.two_shot_run_left = self.two_shot_run.flip_left_right()
 
         # Атака
-        self.one_shot_attack = arcade.load_texture("models/monsters/skeleton/animations/attack/attack1.png")
-        self.two_shot_attack = arcade.load_texture("models/monsters/skeleton/animations/attack/attack2.png")
-        self.three_shot_attack = arcade.load_texture("models/monsters/skeleton/animations/attack/attack3.png")
-        self.four_shot_attack = arcade.load_texture("models/monsters/skeleton/animations/attack/attack4.png")
+        self.one_shot_attack = arcade.load_texture("models/monsters/boss_skeleton/animations/attack/attack1.png")
 
         self.one_shot_attack_left = self.one_shot_attack.flip_left_right()
-        self.two_shot_attack_left = self.two_shot_attack.flip_left_right()
-        self.three_shot_attack_left = self.three_shot_attack.flip_left_right()
-        self.four_shot_attack_left = self.four_shot_attack.flip_left_right()
 
         # Стрела
         self.arrow_texture = arcade.load_texture("models/monsters/skeleton/arrow.png")
