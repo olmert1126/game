@@ -227,7 +227,12 @@ class Wizard:
                 self.player_sprite.texture = frames[0]
 
             shoot_y = self.player_sprite.center_y
-            projectile = self.weapon.create_projectile(shoot_x, shoot_y, self.facing)
+            projectile = self.weapon.create_projectile(
+                shoot_x,
+                shoot_y,
+                self.facing,
+                walls=self.physics_engine.platforms  # ← вот так!
+            )
             return projectile
 
         return None

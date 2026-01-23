@@ -1,11 +1,12 @@
 import arcade
 from arcade import Camera2D
 from scripts.characters import hero_death_knight, hero_wizard
-from scripts.monsters import slime, skeleton
+from scripts.monsters import slime, skeleton, boss_sceleton
 from arcade import LBWH
 from scripts.weapon.sword import Weapon as SwordWeapon
 from scripts.weapon.staff import StaffWeapon
 import random
+import time
 
 # Глобальные константы
 PLAYER_SIZE = 0.1
@@ -41,6 +42,7 @@ class GameView(arcade.View):
         self.staff_weapon = None
         self._prev_hp_p1 = None
         self._prev_hp_p2 = None
+        self.boss_skeleton = None
         self.HP_bar_sprite_list = arcade.SpriteList()
 
         self.shake_timer_p1 = 0.0
@@ -48,7 +50,9 @@ class GameView(arcade.View):
         self.shake_timer_p2 = 0.0
         self.shake_magnitude_p2 = 0
 
-        # --- НОВОЕ: список снарядов ---
+        self.boss_minions = []
+
+        # --- список снарядов ---
         self.projectiles = arcade.SpriteList()
 
         self.loading_texture()
@@ -66,6 +70,7 @@ class GameView(arcade.View):
         self.spawn_slimes = test_map.sprite_lists["spawn_slimes"]
         self.spawn_sceletons = test_map.sprite_lists["spawn_sceletons"]
         self.spawn_players = test_map.sprite_lists["spawn_players"]
+        self.spawn_boss = test_map.sprite_lists.get("spawn_boss")
 
         # Коллизии
         all_collision = arcade.SpriteList()
@@ -118,28 +123,6 @@ class GameView(arcade.View):
         all_sprites.extend(self.platform)
         all_sprites.extend(self.invis)
 
-        # Посох
-        staff_x = self.window.width / 2 + 100
-        staff_y = self.window.height / 2 - 50
-        self.staff_list = arcade.SpriteList()
-        staff_sprite = arcade.Sprite("models/items/staff.png")
-        staff_sprite.center_x = staff_x
-        staff_sprite.center_y = staff_y
-        staff_sprite.scale = 0.15
-        self.staff_list.append(staff_sprite)
-        self.staff_collected = False
-
-        # Меч
-        sword_x = self.window.width / 2 - 100
-        sword_y = self.window.height / 2 - 50
-        self.sword_list = arcade.SpriteList()
-        self.sword_sprite = arcade.Sprite("models/items/sword.png")
-        self.sword_list.append(self.sword_sprite)
-        self.sword_sprite.center_x = sword_x
-        self.sword_sprite.center_y = sword_y
-        self.sword_sprite.scale = 0.15
-        self.sword_collected = False
-
         if len(all_sprites) > 0:
             left = min(s.left for s in all_sprites)
             right = max(s.right for s in all_sprites)
@@ -167,6 +150,32 @@ class GameView(arcade.View):
             for spawn in self.spawn_players:
                 spawn.center_x += dx
                 spawn.center_y += dy
+
+            for spawn in self.spawn_boss:
+                spawn.center_x += dx
+                spawn.center_y += dy
+
+        # Посох
+        staff_x = self.player2_spawn.center_x
+        staff_y = self.player2_spawn.center_y
+        self.staff_list = arcade.SpriteList()
+        staff_sprite = arcade.Sprite("models/items/staff.png")
+        staff_sprite.center_x = staff_x
+        staff_sprite.center_y = staff_y
+        staff_sprite.scale = 0.15
+        self.staff_list.append(staff_sprite)
+        self.staff_collected = False
+
+        # Меч
+        sword_x = self.player1_spawn.center_x
+        sword_y = self.player1_spawn.center_y
+        self.sword_list = arcade.SpriteList()
+        self.sword_sprite = arcade.Sprite("models/items/sword.png")
+        self.sword_list.append(self.sword_sprite)
+        self.sword_sprite.center_x = sword_x
+        self.sword_sprite.center_y = sword_y
+        self.sword_sprite.scale = 0.15
+        self.sword_collected = False
 
         # Игроки
         self.player1 = hero_death_knight.DeathKnight(
@@ -211,6 +220,18 @@ class GameView(arcade.View):
             attack_cooldown=SKELETON_ATTACK_COOLDOWN
         )
 
+        boss_spawn = self.spawn_boss[0]
+        self.boss_skeleton = boss_sceleton.BossSkeleton(
+            x=boss_spawn.center_x,
+            y=boss_spawn.center_y,
+            collision_sprites=collision_slime,
+            players=[self.player1, self.player2],
+            gravity=GRAVITY,
+            damage=SKELETON_DAMAGE,
+            attack_range=SKELETON_ATTACK_RANGE,
+            attack_cooldown=SKELETON_ATTACK_COOLDOWN
+        )
+
     def on_draw(self):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
@@ -224,7 +245,20 @@ class GameView(arcade.View):
         self.ui_camera.use()
         self._draw_ui()
 
+        if not hasattr(self, '_fps_time'):
+            self._fps_time = time.time()
+            self._fps_frames = 0
+        self._fps_frames += 1
+        if time.time() - self._fps_time >= 1.0:
+            self._real_fps = self._fps_frames
+            self._fps_frames = 0
+            self._fps_time = time.time()
+        arcade.draw_text(f"Real FPS: {getattr(self, '_real_fps', 0)}", 10, 50, arcade.color.YELLOW, 16)
+        arcade.draw_text(f"Снарядов: {len(self.projectiles)}", 10, 70, arcade.color.WHITE, 16)
+
     def on_update(self, delta_time):
+        super().on_update(delta_time)  # ← важно для FPS!
+
         # Обновление игроков
         if self.player1.is_alive:
             self.player1.on_update(delta_time)
@@ -240,6 +274,8 @@ class GameView(arcade.View):
         # Монстры
         self.slime.on_update(delta_time)
         self.skeleton.on_update(delta_time)
+        if self.boss_skeleton and self.boss_skeleton.is_alive:
+            self.boss_skeleton.on_update(delta_time)
 
         # Коллизия между игроками
         if self.player1.is_alive and self.player2.is_alive:
@@ -262,26 +298,47 @@ class GameView(arcade.View):
                 self.staff_list.clear()
                 print("Посох подобран!")
 
-        # Урон от DeathKnight (ближний бой)
-        if self.slime.is_alive:
-            self._check_attack_hit(self.player1, self.slime.slime_sprite, self.slime)
-        if self.skeleton.is_alive:
-            self._check_attack_hit(self.player1, self.skeleton.skeleton_sprite, self.skeleton)
+        # === УРОН ОТ MEЧА (DeathKnight) ===
+        if self.player1.is_alive and self.player1.is_attacking and self.player1.weapon:
+            if self.slime.is_alive:
+                self._check_attack_hit(self.player1, self.slime.slime_sprite, self.slime)
+            if self.skeleton.is_alive:
+                self._check_attack_hit(self.player1, self.skeleton.skeleton_sprite, self.skeleton)
+            if self.boss_skeleton and self.boss_skeleton.is_alive:
+                self._check_attack_hit(self.player1, self.boss_skeleton.boss_sprite, self.boss_skeleton)
+            if self.boss_skeleton and self.boss_skeleton.is_alive:
+                for minion in self.boss_skeleton.minions:
+                    if minion.is_alive:
+                        self._check_attack_hit(self.player1, minion.skeleton_sprite, minion)
 
-        # Урон от снарядов (дальний бой)
-        for proj in self.projectiles:
+        # === УРОН ОТ СНАРЯДОВ (Wizard) ===
+        for proj in self.projectiles[:]:  # копия списка
+            hit = False
+
             if self.slime.is_alive and arcade.check_for_collision(proj, self.slime.slime_sprite):
                 self.slime.take_damage(proj.damage)
-                proj.remove_from_sprite_lists()
-            if self.skeleton.is_alive and arcade.check_for_collision(proj, self.skeleton.skeleton_sprite):
+                hit = True
+            elif self.skeleton.is_alive and arcade.check_for_collision(proj, self.skeleton.skeleton_sprite):
                 self.skeleton.take_damage(proj.damage)
+                hit = True
+            elif self.boss_skeleton and self.boss_skeleton.is_alive and arcade.check_for_collision(proj, self.boss_skeleton.boss_sprite):
+                self.boss_skeleton.take_damage(proj.damage)
+                hit = True
+            elif self.boss_skeleton and self.boss_skeleton.is_alive:
+                for minion in self.boss_skeleton.minions:
+                    if minion.is_alive and arcade.check_for_collision(proj, minion.skeleton_sprite):
+                        minion.take_damage(proj.damage)
+                        hit = True
+                        break  # один снаряд — один враг
+
+            if hit:
                 proj.remove_from_sprite_lists()
 
         # Обновление снарядов
-        self.projectiles.update(delta_time)
+        self.projectiles.update()
 
         # Удаление снарядов за пределами экрана
-        for proj in self.projectiles:
+        for proj in self.projectiles[:]:
             if proj.center_x < -200 or proj.center_x > self.window.width + 200:
                 proj.remove_from_sprite_lists()
 
@@ -357,7 +414,7 @@ class GameView(arcade.View):
         if self.player1.is_alive:
             self.player1.on_key_press(key, modifiers)
         if self.player2.is_alive:
-            proj = self.player2.on_key_press(key, modifiers)  # ← ВАЖНО: player2, не wizard
+            proj = self.player2.on_key_press(key, modifiers)
             if proj:
                 self.projectiles.append(proj)
 
@@ -417,7 +474,9 @@ class GameView(arcade.View):
             self.slime.draw()
         if self.skeleton.is_alive:
             self.skeleton.draw()
-        self.projectiles.draw()  # ← рисуем снаряды
+        self.projectiles.draw()
+        if self.boss_skeleton and self.boss_skeleton.is_alive:
+            self.boss_skeleton.draw()
 
     def on_key_release(self, key, modifiers):
         if self.player1.is_alive:

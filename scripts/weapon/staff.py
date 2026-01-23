@@ -3,7 +3,7 @@ from scripts.weapon.projectile import Projectile
 
 class StaffWeapon:
     def __init__(self, name="staff", damage=40, attack_duration_frames=3,
-                 projectile_speed=50, projectile_scale=0.3):
+                 projectile_speed=8, projectile_scale=0.3):
         self.name = name
         self.damage = damage
         self.attack_duration_frames = attack_duration_frames
@@ -22,14 +22,15 @@ class StaffWeapon:
             self.attack_frames_right.append(tex_right)
             self.attack_frames_left.append(tex_left)
 
-    def create_projectile(self, x, y, direction):
+    def create_projectile(self, x, y, direction, walls=None):  # ← ДОБАВИЛИ walls!
         return Projectile(
             x=x,
             y=y,
             direction=direction,
             speed=self.projectile_speed,
             damage=self.damage,
-            scale=self.projectile_scale
+            scale=self.projectile_scale,
+            walls=walls  # ← ПЕРЕДАЁМ walls в снаряд
         )
 
     @classmethod
