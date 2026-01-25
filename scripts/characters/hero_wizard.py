@@ -96,7 +96,6 @@ class Wizard:
         elif self.change_x < 0:
             self.facing = "left"
 
-
         if self.physics_engine.can_jump():
             self.up = False
 
@@ -179,7 +178,8 @@ class Wizard:
             elif key == arcade.key.RIGHT:
                 self.change_x = self.speed
                 self.run = True
-            elif key == arcade.key.NUM_0:
+            # 🔥 ИСПРАВЛЕНО: KEY_0 вместо NUM_0
+            elif key == arcade.key.KEY_0:
                 return self.start_attack()
         return None
 
@@ -230,11 +230,12 @@ class Wizard:
 
             shoot_y = self.player_sprite.center_y
             projectile = self.weapon.create_projectile(
-                shoot_x,
-                shoot_y,
-                self.facing,
+                x=shoot_x,
+                y=shoot_y,
+                direction=self.facing,
                 walls=self.collision_sprites
             )
+            print(f"✅ СНАРЯД СОЗДАН: x={projectile.center_x:.1f}, y={projectile.center_y:.1f}")
             return projectile
 
         return None

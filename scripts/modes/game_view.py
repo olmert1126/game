@@ -169,8 +169,14 @@ class GameView(arcade.View):
 
         self.camera_player1.use()
         self._draw_game_world()
+        for proj in self.projectiles:
+            proj.draw()
+
         self.camera_player2.use()
         self._draw_game_world()
+        for proj in self.projectiles:
+            proj.draw()
+
         self.ui_camera.use()
         self._draw_ui()
 
@@ -304,54 +310,69 @@ class GameView(arcade.View):
                 self._check_attack_hit(self.player1, s.slime_sprite, s)
 
         # Урон от снарядов игрока
-        for proj in self.projectiles:
+        for proj in self.projectiles[:]:  # ← копия списка!
+            hit = False
+
+            # Проверка монстров
             if self.slime.is_alive and arcade.check_for_collision(proj, self.slime.slime_sprite):
                 self.slime.take_damage(proj.damage)
                 proj.remove_from_sprite_lists()
-            if self.skeleton.is_alive and arcade.check_for_collision(proj, self.skeleton.skeleton_sprite):
+                hit = True
+            elif self.skeleton.is_alive and arcade.check_for_collision(proj, self.skeleton.skeleton_sprite):
                 self.skeleton.take_damage(proj.damage)
                 proj.remove_from_sprite_lists()
-            if self.boss_skeleton.is_alive and arcade.check_for_collision(proj, self.boss_skeleton.skeleton_boss_sprite):
+                hit = True
+            elif self.boss_skeleton.is_alive and arcade.check_for_collision(proj,
+                                                                            self.boss_skeleton.skeleton_boss_sprite):
                 self.boss_skeleton.take_damage(proj.damage)
                 proj.remove_from_sprite_lists()
-            for skel in self.summoned_skeletons:
-                if skel.is_alive and arcade.check_for_collision(proj, skel.skeleton_sprite):
-                    skel.take_damage(proj.damage)
-                    proj.remove_from_sprite_lists()
-                    break
-            for s in self.spawned_slimes:
-                if s.is_alive and arcade.check_for_collision(proj, s.slime_sprite):
-                    s.take_damage(proj.damage)
-                    proj.remove_from_sprite_lists()
-                    break
+                hit = True
+            else:
+                for skel in self.summoned_skeletons:
+                    if skel.is_alive and arcade.check_for_collision(proj, skel.skeleton_sprite):
+                        skel.take_damage(proj.damage)
+                        proj.remove_from_sprite_lists()
+                        hit = True
+                        break
+                if not hit:
+                    for s in self.spawned_slimes:
+                        if s.is_alive and arcade.check_for_collision(proj, s.slime_sprite):
+                            s.take_damage(proj.damage)
+                            proj.remove_from_sprite_lists()
+                            hit = True
+                            break
 
-        self.projectiles.update(delta_time)
-        for proj in self.projectiles:
-            if proj.center_x < -200 or proj.center_x > self.window.width + 200:
-                proj.remove_from_sprite_lists()
+            # Если не попал — проверяем, не улетел ли за пределы карты
+            if not hit:
+                # Удаляем, если улетел слишком далеко от центра мира
+                # Или используем фиксированные границы
+                if (proj.center_x < -1000 or
+                        proj.center_x > 5000 or
+                        proj.center_y < -1000 or
+                        proj.center_y > 3000):
+                    proj.remove_from_sprite_lists()
 
         # Камеры
-        for i, (player, cam, shake_timer, shake_mag) in enumerate([
-            (self.player1, self.camera_player1, self.shake_timer_p1, self.shake_magnitude_p1),
-            (self.player2, self.camera_player2, self.shake_timer_p2, self.shake_magnitude_p2)
-        ], start=1):
-            if player.is_alive:
-                base_x, base_y = player.player_sprite.position
-                if getattr(self, f'shake_timer_p{i}') > 0:
-                    offset_x = random.uniform(-shake_mag, shake_mag)
-                    offset_y = random.uniform(-shake_mag, shake_mag)
-                    cam.position = (base_x + offset_x, base_y + offset_y)
-                    setattr(self, f'shake_timer_p{i}', getattr(self, f'shake_timer_p{i}') - delta_time)
-                else:
-                    cam.position = (base_x, base_y)
+        if self.player1.is_alive:
+            self.camera_player1.position = self.player1.player_sprite.position
+        if self.player2.is_alive:
+            self.camera_player2.position = self.player2.player_sprite.position
 
-        # Тряска при уроне
-        for i, player in enumerate([self.player1, self.player2], start=1):
-            if player.is_alive:
-                prev_hp = getattr(self, f'_prev_hp_p{i}')
-                if prev_hp is not None and player.hp < prev_hp:
-                    self.start_camera_shake(i, duration=0.25, magnitude=8)
-                setattr(self, f'_prev_hp_p{i}', player.hp)
+        # Тряска поверх базовой позиции
+        for i in [1, 2]:
+            player = getattr(self, f'player{i}')
+            cam = getattr(self, f'camera_player{i}')
+            shake_timer = getattr(self, f'shake_timer_p{i}')
+            shake_mag = getattr(self, f'shake_magnitude_p{i}')
+
+            if player.is_alive and shake_timer > 0:
+                offset_x = random.uniform(-shake_mag, shake_mag)
+                offset_y = random.uniform(-shake_mag, shake_mag)
+                cam.position = (
+                    player.player_sprite.center_x + offset_x,
+                    player.player_sprite.center_y + offset_y
+                )
+                setattr(self, f'shake_timer_p{i}', shake_timer - delta_time)
 
     def _draw_ui(self):
         if len(self.HP_bar_sprite_list) >= 2:
@@ -451,7 +472,6 @@ class GameView(arcade.View):
         if self.slime.is_alive: self.slime.draw()
         if self.skeleton.is_alive: self.skeleton.draw()
         if self.boss_skeleton.is_alive: self.boss_skeleton.draw()
-        self.projectiles.draw()
         for skel in self.summoned_skeletons:
             if skel.is_alive:
                 skel.draw()
