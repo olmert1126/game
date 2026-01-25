@@ -4,7 +4,7 @@ class Boss_skeleton:
     def __init__(self, x, y, collision_sprites, players, gravity=0.5, damage=30, attack_range=4000, attack_cooldown=2.0):
         self.loading_texture()
         self.skeleton_boss_sprites_list = arcade.SpriteList()
-        self.projectiles = arcade.SpriteList()  # ← переименовано для ясности
+        self.projectiles = arcade.SpriteList()
 
         self.speed = 2
         self.facing = "right"
@@ -77,7 +77,7 @@ class Boss_skeleton:
         self.current_texture_run = 0
 
     def _shoot_arrow(self, target_player):
-        arrow = arcade.Sprite(self.arrow_texture, scale=0.25)
+        arrow = arcade.Sprite(self.arrow_texture, scale=0.1)
         arrow.center_x = self.skeleton_boss_sprite.center_x
         arrow.center_y = self.skeleton_boss_sprite.center_y + 10
 
@@ -98,11 +98,11 @@ class Boss_skeleton:
             target_player.player_sprite.center_y
         )
         arrow.angle = angle
-        arrow.damage = self.damage  # явно задаём урон
+        arrow.damage = self.damage
         self.projectiles.append(arrow)
 
     def _shoot_slime_ball(self, target_player):
-        slime_ball = arcade.Sprite(self.slime_ball_texture, scale=0.3)
+        slime_ball = arcade.Sprite(self.slime_ball_texture, scale=0.1)
         slime_ball.center_x = self.skeleton_boss_sprite.center_x
         slime_ball.center_y = self.skeleton_boss_sprite.center_y + 10
 
@@ -124,7 +124,7 @@ class Boss_skeleton:
         )
         slime_ball.angle = angle
         slime_ball.damage = 40
-        slime_ball.is_slime_projectile = True  # ← КЛЮЧЕВОЙ ФЛАГ!
+        slime_ball.is_slime_projectile = True  # ← флаг для GameView
         self.projectiles.append(slime_ball)
 
     def on_update(self, delta_time):
@@ -133,24 +133,12 @@ class Boss_skeleton:
 
         self.physics_engine.update()
 
-        # Обновление и обработка снарядов (стрелы + слаймы)
-        for proj in self.projectiles:
+        for proj in self.projectiles[:]:
             proj.update()
-            # Удаление при столкновении со стеной
-            if arcade.check_for_collision_with_list(proj, self.collision_sprites):
-                proj.remove_from_sprite_lists()
-                continue
-            # Удаление при выходе за пределы
+            # Удаляем, если улетел слишком далеко
             if (abs(proj.center_x - self.skeleton_boss_sprite.center_x) > 5000 or
                 abs(proj.center_y - self.skeleton_boss_sprite.center_y) > 5000):
                 proj.remove_from_sprite_lists()
-                continue
-            # Урон игроку
-            for player in self.players:
-                if player.is_alive and arcade.check_for_collision(proj, player.player_sprite):
-                    player.take_damage(getattr(proj, 'damage', self.damage))
-                    proj.remove_from_sprite_lists()
-                    break
 
         # Выбор цели
         target_player = None
@@ -212,7 +200,7 @@ class Boss_skeleton:
                 self.should_summon = True
                 self._last_summon_time = 0.0
         else:
-            self.should_summon = False  # на всякий случай
+            self.should_summon = False
 
         self.update_animation(delta_time)
 
@@ -230,7 +218,7 @@ class Boss_skeleton:
 
     def draw(self):
         self.skeleton_boss_sprites_list.draw()
-        self.projectiles.draw()  # ← рисуем все снаряды
+        self.projectiles.draw()
 
     def take_damage(self, damage):
         if not self.is_alive:
