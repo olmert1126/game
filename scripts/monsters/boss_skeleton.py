@@ -4,20 +4,29 @@ class Boss_skeleton:
     def __init__(self, x, y, collision_sprites, players, gravity=0.5, damage=30, attack_range=4000, attack_cooldown=2.0):
         self.loading_texture()
         self.skeleton_boss_sprites_list = arcade.SpriteList()
-        self.arrow_list = arcade.SpriteList()
+        self.projectiles = arcade.SpriteList()  # ← переименовано для ясности
 
         self.speed = 2
         self.facing = "right"
-        self.hp = 100
+        self.hp = 1000
         self.max_hp = self.hp
         self.is_alive = True
 
+        # Таймеры
+        self.summon_cooldown = 20.0
+        self._last_summon_time = 0.0
+        self.should_summon = False
+
+        self.slime_attack_cooldown = 2.0
+        self._last_slime_attack_time = 0.0
+
+        # Параметры боя
         self.gravity = gravity
         self.players = players
         self.damage = damage
         self.attack_range = attack_range
         self.attack_cooldown = attack_cooldown
-        self._last_attack_time = 0.0
+        self._last_arrow_attack_time = 0.0
         self.is_attacking = False
 
         self.center_x = x
@@ -61,13 +70,14 @@ class Boss_skeleton:
         self.one_shot_attack = arcade.load_texture("models/monsters/boss_skeleton/animations/attack/attack1.png")
         self.one_shot_attack_left = self.one_shot_attack.flip_left_right()
         self.arrow_texture = arcade.load_texture("models/monsters/boss_skeleton/arrow.png")
+        self.slime_ball_texture = arcade.load_texture("models/monsters/slime/slime_main_form.png")
 
     def _reverse_direction(self):
         self.facing = "left" if self.facing == "right" else "right"
         self.current_texture_run = 0
 
     def _shoot_arrow(self, target_player):
-        arrow = arcade.Sprite()
+        arrow = arcade.Sprite(self.arrow_texture, scale=0.25)
         arrow.center_x = self.skeleton_boss_sprite.center_x
         arrow.center_y = self.skeleton_boss_sprite.center_y + 10
 
@@ -88,9 +98,34 @@ class Boss_skeleton:
             target_player.player_sprite.center_y
         )
         arrow.angle = angle
-        arrow.texture = self.arrow_texture
-        arrow.scale = 0.25
-        self.arrow_list.append(arrow)
+        arrow.damage = self.damage  # явно задаём урон
+        self.projectiles.append(arrow)
+
+    def _shoot_slime_ball(self, target_player):
+        slime_ball = arcade.Sprite(self.slime_ball_texture, scale=0.3)
+        slime_ball.center_x = self.skeleton_boss_sprite.center_x
+        slime_ball.center_y = self.skeleton_boss_sprite.center_y + 10
+
+        dx = target_player.player_sprite.center_x - slime_ball.center_x
+        dy = target_player.player_sprite.center_y - slime_ball.center_y
+        distance = (dx ** 2 + dy ** 2) ** 0.5
+        if distance == 0:
+            return
+
+        norm_dx = dx / distance
+        norm_dy = dy / distance
+        slime_ball.change_x = norm_dx * 6
+        slime_ball.change_y = norm_dy * 6
+
+        angle = arcade.math.get_angle_degrees(
+            slime_ball.center_x, slime_ball.center_y,
+            target_player.player_sprite.center_x,
+            target_player.player_sprite.center_y
+        )
+        slime_ball.angle = angle
+        slime_ball.damage = 40
+        slime_ball.is_slime_projectile = True  # ← КЛЮЧЕВОЙ ФЛАГ!
+        self.projectiles.append(slime_ball)
 
     def on_update(self, delta_time):
         if not self.is_alive:
@@ -98,23 +133,26 @@ class Boss_skeleton:
 
         self.physics_engine.update()
 
-        for arrow in self.arrow_list:
-            arrow.update()
-            if arcade.check_for_collision_with_list(arrow, self.collision_sprites):
-                arrow.remove_from_sprite_lists()
+        # Обновление и обработка снарядов (стрелы + слаймы)
+        for proj in self.projectiles:
+            proj.update()
+            # Удаление при столкновении со стеной
+            if arcade.check_for_collision_with_list(proj, self.collision_sprites):
+                proj.remove_from_sprite_lists()
                 continue
-            if (abs(arrow.center_x - self.skeleton_boss_sprite.center_x) > 5000 or
-                abs(arrow.center_y - self.skeleton_boss_sprite.center_y) > 5000):
-                arrow.remove_from_sprite_lists()
+            # Удаление при выходе за пределы
+            if (abs(proj.center_x - self.skeleton_boss_sprite.center_x) > 5000 or
+                abs(proj.center_y - self.skeleton_boss_sprite.center_y) > 5000):
+                proj.remove_from_sprite_lists()
                 continue
+            # Урон игроку
             for player in self.players:
-                if not player.is_alive:
-                    continue
-                if arcade.check_for_collision(arrow, player.player_sprite):
-                    player.take_damage(self.damage)
-                    arrow.remove_from_sprite_lists()
+                if player.is_alive and arcade.check_for_collision(proj, player.player_sprite):
+                    player.take_damage(getattr(proj, 'damage', self.damage))
+                    proj.remove_from_sprite_lists()
                     break
 
+        # Выбор цели
         target_player = None
         for player in self.players:
             if not player.is_alive:
@@ -124,15 +162,27 @@ class Boss_skeleton:
                 target_player = player
                 break
 
+        current_hp_ratio = self.hp / self.max_hp
+
         if target_player is not None:
             self.is_attacking = True
-            self._last_attack_time += delta_time
-            if self._last_attack_time >= self.attack_cooldown:
-                self._shoot_arrow(target_player)
-                self._last_attack_time = 0.0
             self.facing = "right" if target_player.player_sprite.center_x > self.skeleton_boss_sprite.center_x else "left"
+
+            if current_hp_ratio > 0.5:
+                # Фаза 1: стрельба стрелами
+                self._last_arrow_attack_time += delta_time
+                if self._last_arrow_attack_time >= self.attack_cooldown:
+                    self._shoot_arrow(target_player)
+                    self._last_arrow_attack_time = 0.0
+            else:
+                # Фаза 2: стрельба слаймами
+                self._last_slime_attack_time += delta_time
+                if self._last_slime_attack_time >= self.slime_attack_cooldown:
+                    self._shoot_slime_ball(target_player)
+                    self._last_slime_attack_time = 0.0
         else:
             self.is_attacking = False
+            # Движение вперёд/назад
             direction = 1 if self.facing == "right" else -1
             next_x = self.skeleton_boss_sprite.center_x + self.speed * direction
 
@@ -155,6 +205,15 @@ class Boss_skeleton:
             else:
                 self.skeleton_boss_sprite.center_x = next_x
 
+        # Призыв скелетов — только в фазе 1
+        if current_hp_ratio > 0.5:
+            self._last_summon_time += delta_time
+            if self._last_summon_time >= self.summon_cooldown:
+                self.should_summon = True
+                self._last_summon_time = 0.0
+        else:
+            self.should_summon = False  # на всякий случай
+
         self.update_animation(delta_time)
 
     def update_animation(self, delta_time: float = 1 / 60):
@@ -171,7 +230,7 @@ class Boss_skeleton:
 
     def draw(self):
         self.skeleton_boss_sprites_list.draw()
-        self.arrow_list.draw()
+        self.projectiles.draw()  # ← рисуем все снаряды
 
     def take_damage(self, damage):
         if not self.is_alive:

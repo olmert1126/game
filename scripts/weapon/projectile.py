@@ -2,10 +2,8 @@ import arcade
 
 class Projectile(arcade.Sprite):
     def __init__(self, x, y, direction, speed=8, damage=40, scale=0.5, walls=None, max_distance=900):
-        # super().__init__("models/items/ball.png", scale=scale)  # ← ЗАКОММЕНТИРУЙТЕ ЭТО
-        super().__init__()  # ← Создаём пустой спрайт
-        self.texture = arcade.make_soft_circle_texture(20, arcade.color.BLUE)  # ← Цветной круг
-        self.scale = scale  # ← Масштаб
+        texture = arcade.make_soft_circle_texture(20, arcade.color.BLUE)
+        super().__init__(texture, scale=scale)
 
         self.center_x = x
         self.center_y = y
@@ -15,14 +13,15 @@ class Projectile(arcade.Sprite):
         self.direction = direction
         self.max_distance = max_distance
 
-        # Создаём SpriteList из walls
+        # Обработка стен
         self.walls = arcade.SpriteList()
-        if isinstance(walls, list):
-            for wall in walls:
-                if isinstance(wall, arcade.Sprite):
-                    self.walls.append(wall)
-        elif isinstance(walls, arcade.SpriteList):
-            self.walls.extend(walls)
+        if walls is not None:
+            if isinstance(walls, arcade.SpriteList):
+                self.walls.extend(walls)
+            elif isinstance(walls, (list, tuple)):
+                for wall in walls:
+                    if isinstance(wall, arcade.Sprite):
+                        self.walls.append(wall)
 
     def update(self, delta_time):
         move = self.speed * delta_time

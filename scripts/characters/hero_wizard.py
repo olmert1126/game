@@ -32,6 +32,8 @@ class Wizard:
         self.texture_change_time_jump = 0
         self.texture_change_delay_jump = 0.2
 
+        self.collision_sprites = colision_sprites
+
         # Оружие и атака
         self.weapon = None
         self.is_attacking = False
@@ -231,7 +233,7 @@ class Wizard:
                 shoot_x,
                 shoot_y,
                 self.facing,
-                walls=self.physics_engine.platforms  # ← вот так!
+                walls=self.collision_sprites
             )
             return projectile
 

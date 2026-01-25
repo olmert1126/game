@@ -30,9 +30,10 @@ class StaffWeapon:
             speed=self.projectile_speed,
             damage=self.damage,
             scale=self.projectile_scale,
-            walls=walls  # ← ПЕРЕДАЁМ walls в снаряд
+            walls=walls
         )
 
     @classmethod
     def create_staff(cls):
         return cls()
+

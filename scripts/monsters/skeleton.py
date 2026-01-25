@@ -23,7 +23,7 @@ class Skeleton:
         self.center_x = x
         self.center_y = y
 
-        self.skeleton_sprite = arcade.Sprite(texture=self.main_form, scale=0.15)
+        self.skeleton_sprite = arcade.Sprite(self.main_form, scale=0.15)
         self.skeleton_sprite.center_x = self.center_x
         self.skeleton_sprite.center_y = self.center_y
 
