@@ -29,6 +29,8 @@ class Boss_skeleton:
         self._last_arrow_attack_time = 0.0
         self.is_attacking = False
 
+        self.first_attack = False
+
         self.center_x = x
         self.center_y = y
 
@@ -80,6 +82,8 @@ class Boss_skeleton:
         arrow = arcade.Sprite(self.arrow_texture, scale=0.1)
         arrow.center_x = self.skeleton_boss_sprite.center_x
         arrow.center_y = self.skeleton_boss_sprite.center_y + 10
+
+        self.first_attack = True
 
         dx = target_player.player_sprite.center_x - arrow.center_x
         dy = target_player.player_sprite.center_y - arrow.center_y

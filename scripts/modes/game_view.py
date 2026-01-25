@@ -418,7 +418,7 @@ class GameView(arcade.View):
                     arcade.draw_rect_filled(LBWH(x, y, fill_width, inner_height), color=color)
 
         # 🔥 Чисто красная полоска HP босса (без текстуры)
-        if self.boss_skeleton and self.boss_skeleton.is_alive:
+        if self.boss_skeleton and self.boss_skeleton.is_alive and self.boss_skeleton.first_attack:
             boss_max_width = 400  # ширина полной полоски
             boss_height = 20
             boss_ratio = max(0.0, min(1.0, self.boss_skeleton.hp / self.boss_skeleton.max_hp))
