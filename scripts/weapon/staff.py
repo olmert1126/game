@@ -29,7 +29,8 @@ class StaffWeapon:
             direction=direction,
             speed=self.projectile_speed,
             damage=self.damage,
-            scale=self.projectile_scale
+            scale=self.projectile_scale,
+            walls=None  # ← явно передаём None
         )
 
     @classmethod

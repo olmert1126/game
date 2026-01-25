@@ -32,6 +32,8 @@ class Wizard:
         self.texture_change_time_jump = 0
         self.texture_change_delay_jump = 0.2
 
+        self.collision_sprites = colision_sprites
+
         # Оружие и атака
         self.weapon = None
         self.is_attacking = False
@@ -93,7 +95,6 @@ class Wizard:
             self.facing = "right"
         elif self.change_x < 0:
             self.facing = "left"
-
 
         if self.physics_engine.can_jump():
             self.up = False
@@ -227,7 +228,12 @@ class Wizard:
                 self.player_sprite.texture = frames[0]
 
             shoot_y = self.player_sprite.center_y
-            projectile = self.weapon.create_projectile(shoot_x, shoot_y, self.facing)
+            projectile = self.weapon.create_projectile(
+                x=shoot_x,
+                y=shoot_y,
+                direction=self.facing,
+            )
+            print(f" СНАРЯД СОЗДАН: x={projectile.center_x:.1f}, y={projectile.center_y:.1f}")
             return projectile
 
         return None
