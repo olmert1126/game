@@ -226,6 +226,9 @@ class GameView(arcade.View):
         if self.player2.is_alive:
             self.player2.on_update(delta_time)
 
+            
+
+
         # Физика
         if self.player1.is_alive:
             self.player1.physics_engine.update()
