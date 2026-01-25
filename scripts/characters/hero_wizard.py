@@ -178,8 +178,7 @@ class Wizard:
             elif key == arcade.key.RIGHT:
                 self.change_x = self.speed
                 self.run = True
-            # 🔥 ИСПРАВЛЕНО: KEY_0 вместо NUM_0
-            elif key == arcade.key.KEY_0:
+            elif key == arcade.key.NUM_0:
                 return self.start_attack()
         return None
 
@@ -233,9 +232,8 @@ class Wizard:
                 x=shoot_x,
                 y=shoot_y,
                 direction=self.facing,
-                walls=self.collision_sprites
             )
-            print(f"✅ СНАРЯД СОЗДАН: x={projectile.center_x:.1f}, y={projectile.center_y:.1f}")
+            print(f" СНАРЯД СОЗДАН: x={projectile.center_x:.1f}, y={projectile.center_y:.1f}")
             return projectile
 
         return None

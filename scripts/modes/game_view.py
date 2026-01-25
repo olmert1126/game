@@ -167,27 +167,30 @@ class GameView(arcade.View):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
 
+        # Левая камера
         self.camera_player1.use()
         self._draw_game_world()
         for proj in self.projectiles:
             proj.draw()
 
+        # Правая камера
         self.camera_player2.use()
         self._draw_game_world()
         for proj in self.projectiles:
             proj.draw()
 
+        # UI
         self.ui_camera.use()
         self._draw_ui()
 
         arcade.draw_text(f"FPS: {int(self.fps_display)}", 10, 30, arcade.color.WHITE, 16)
 
     def on_update(self, delta_time):
-
+        # FPS
         if delta_time > 0:
             instant_fps = 1.0 / delta_time
             self.fps_history.append(instant_fps)
-            if len(self.fps_history) > 10:  # усредняем за последние 10 кадров
+            if len(self.fps_history) > 10:
                 self.fps_history.pop(0)
             self.fps_display = sum(self.fps_history) / len(self.fps_history)
         else:
@@ -228,34 +231,27 @@ class GameView(arcade.View):
                 skel.on_update(delta_time)
         self.summoned_skeletons = [skel for skel in self.summoned_skeletons if skel.is_alive]
 
-        # 🔥 ОБРАБОТКА СНАРЯДОВ БОССА: ВЗРЫВ → СПАВН СЛАЙМА
+        # Обработка снарядов босса
         for proj in self.boss_skeleton.projectiles[:]:
-            # Урон игроку
             hit_player = False
             for player in [self.player1, self.player2]:
                 if player.is_alive and arcade.check_for_collision(proj, player.player_sprite):
-                    # Определяем урон: либо из атрибута, либо по умолчанию
                     damage = getattr(proj, 'damage', 30)
                     player.take_damage(damage)
                     hit_player = True
                     proj.remove_from_sprite_lists()
                     break
 
-            # Если не попал в игрока — проверяем стены
             if not hit_player:
                 if arcade.check_for_collision_with_list(proj, self.collision_slime):
-                    # Если это слайм-шар — спавним слайма
                     if hasattr(proj, 'is_slime_projectile'):
                         spawn_x = proj.center_x
                         spawn_y = proj.center_y
-
-                        # Коррекция позиции при ударе о стену
                         walls_hit = arcade.check_for_collision_with_list(proj, self.collision_slime)
                         if walls_hit:
                             wall = walls_hit[0]
                             spawn_y = wall.top + 10
                             spawn_x = max(wall.left + 10, min(spawn_x, wall.right - 10))
-
                         new_slime = slime.Slime(
                             x=spawn_x,
                             y=spawn_y,
@@ -266,8 +262,6 @@ class GameView(arcade.View):
                             damage_cooldown=DAMAGE_COOLDOWN
                         )
                         self.spawned_slimes.append(new_slime)
-
-                    # Удаляем снаряд в любом случае
                     proj.remove_from_sprite_lists()
 
         # Обновление спавненных слаймов
@@ -286,7 +280,6 @@ class GameView(arcade.View):
             self.sword_collected = True
             self.sword_list.clear()
             print("Меч подобран!")
-
         if not self.staff_collected and self.staff_list and self.player2.is_alive:
             staff = self.staff_list[0]
             if arcade.check_for_collision(staff, self.player2.player_sprite):
@@ -309,11 +302,11 @@ class GameView(arcade.View):
             if s.is_alive:
                 self._check_attack_hit(self.player1, s.slime_sprite, s)
 
-        # Урон от снарядов игрока
-        for proj in self.projectiles[:]:  # ← копия списка!
-            hit = False
+        # ОБНОВЛЕНИЕ И ОБРАБОТКА СНАРЯДОВ ИГРОКА
+        for proj in self.projectiles[:]:
+            proj.update(delta_time)
 
-            # Проверка монстров
+            hit = False
             if self.slime.is_alive and arcade.check_for_collision(proj, self.slime.slime_sprite):
                 self.slime.take_damage(proj.damage)
                 proj.remove_from_sprite_lists()
@@ -322,8 +315,7 @@ class GameView(arcade.View):
                 self.skeleton.take_damage(proj.damage)
                 proj.remove_from_sprite_lists()
                 hit = True
-            elif self.boss_skeleton.is_alive and arcade.check_for_collision(proj,
-                                                                            self.boss_skeleton.skeleton_boss_sprite):
+            elif self.boss_skeleton.is_alive and arcade.check_for_collision(proj, self.boss_skeleton.skeleton_boss_sprite):
                 self.boss_skeleton.take_damage(proj.damage)
                 proj.remove_from_sprite_lists()
                 hit = True
@@ -342,23 +334,17 @@ class GameView(arcade.View):
                             hit = True
                             break
 
-            # Если не попал — проверяем, не улетел ли за пределы карты
-            if not hit:
-                # Удаляем, если улетел слишком далеко от центра мира
-                # Или используем фиксированные границы
-                if (proj.center_x < -1000 or
-                        proj.center_x > 5000 or
-                        proj.center_y < -1000 or
-                        proj.center_y > 3000):
-                    proj.remove_from_sprite_lists()
+            if not hit and (proj.center_x < -1000 or proj.center_x > 5000 or
+                           proj.center_y < -1000 or proj.center_y > 3000):
+                proj.remove_from_sprite_lists()
 
-        # Камеры
+        # Обновление позиции камер
         if self.player1.is_alive:
             self.camera_player1.position = self.player1.player_sprite.position
         if self.player2.is_alive:
             self.camera_player2.position = self.player2.player_sprite.position
 
-        # Тряска поверх базовой позиции
+        # Тряска
         for i in [1, 2]:
             player = getattr(self, f'player{i}')
             cam = getattr(self, f'camera_player{i}')
@@ -382,8 +368,6 @@ class GameView(arcade.View):
             p2.center_x = self.window.width - p2.width / 2
             p2.center_y = self.window.height - p2.height / 2
         self.HP_bar_sprite_list.draw()
-
-        # Больше ничего не рисуем здесь для босса — всё в draw_hp_fill
         self.draw_hp_fill()
 
     def start_camera_shake(self, player_num: int, duration: float = 0.3, magnitude: float = 5.0):
@@ -427,7 +411,6 @@ class GameView(arcade.View):
         inner_height = 50
         inner_width = bar_width - 2 * padding
 
-        # Игроки
         for i, player in enumerate([self.player1, self.player2], start=1):
             if player.is_alive:
                 ratio = max(0.0, min(1.0, player.hp / player.max_hp))
@@ -438,24 +421,18 @@ class GameView(arcade.View):
                     color = arcade.color.GREEN if i == 1 else arcade.color.BLUE
                     arcade.draw_rect_filled(LBWH(x, y, fill_width, inner_height), color=color)
 
-        # 🔥 Чисто красная полоска HP босса (без текстуры)
-        if self.boss_skeleton and self.boss_skeleton.is_alive and self.boss_skeleton.first_attack:
-            boss_max_width = 400  # ширина полной полоски
+        # HP босса
+        if self.boss_skeleton and self.boss_skeleton.is_alive and getattr(self.boss_skeleton, 'has_shot', False):
+            boss_max_width = 400
             boss_height = 20
             boss_ratio = max(0.0, min(1.0, self.boss_skeleton.hp / self.boss_skeleton.max_hp))
             boss_fill_width = boss_max_width * boss_ratio
-
-            # Центр экрана по X
             center_x = self.window.width // 2
-            # Сверху, с небольшим отступом
             top_y = self.window.height - 30
-
-            # Фон (серый, пустая часть)
             arcade.draw_rect_filled(
                 LBWH(center_x - boss_max_width // 2, top_y, boss_max_width, boss_height),
                 color=arcade.color.DARK_GRAY
             )
-            # Заполнение (красное)
             if boss_fill_width > 0:
                 arcade.draw_rect_filled(
                     LBWH(center_x - boss_max_width // 2, top_y, boss_fill_width, boss_height),
