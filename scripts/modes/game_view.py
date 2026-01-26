@@ -125,7 +125,7 @@ class GameView(arcade.View):
                     spawn.center_y += dy
 
         staff_x = self.player2_spawn.center_x
-        staff_y = self.player1_spawn.center_y
+        staff_y = self.player2_spawn.center_y
         self.staff_list = arcade.SpriteList()
         staff_sprite = arcade.Sprite("models/items/staff.png", scale=0.15)
         staff_sprite.center_x, staff_sprite.center_y = staff_x, staff_y
@@ -170,14 +170,12 @@ class GameView(arcade.View):
         # Левая камера
         self.camera_player1.use()
         self._draw_game_world()
-        for proj in self.projectiles:
-            proj.draw()
+        self.projectiles.draw()
 
         # Правая камера
         self.camera_player2.use()
         self._draw_game_world()
-        for proj in self.projectiles:
-            proj.draw()
+        self.projectiles.draw()
 
         # UI
         self.ui_camera.use()
