@@ -39,6 +39,8 @@ class GameView(arcade.View):
         self.staff_list = None
         self.staff_collected = False
         self.HP_bar = None
+        self.bgm = arcade.load_sound("models/sounds/bgm_dungeon.ogg", streaming=True)
+        self.bgm_player = None
         self.sword_weapon = None
         self.staff_weapon = None
         self._prev_hp_p1 = None
@@ -63,6 +65,10 @@ class GameView(arcade.View):
         self.walls = test_map.sprite_lists["walls"]
         self.platform = test_map.sprite_lists["platforms"]
         self.invis = test_map.sprite_lists.get("invis", arcade.SpriteList())
+        # Звук
+        if self.bgm_player is None or not self.bgm_player.playing:
+            self.bgm_player = arcade.play_sound(self.bgm, volume=0.3)
+
         self.spawn_slimes = test_map.sprite_lists["spawn_slimes"]
         self.spawn_sceletons = test_map.sprite_lists["spawn_sceletons"]
         self.spawn_players = test_map.sprite_lists["spawn_players"]
@@ -76,6 +82,10 @@ class GameView(arcade.View):
         self.collision_slime.extend(self.walls)
         self.collision_slime.extend(self.platform)
         self.collision_slime.extend(self.invis)
+
+        self.projectile_walls = arcade.SpriteList()
+        self.projectile_walls.extend(self.walls)
+        self.projectile_walls.extend(self.platform)
 
         slime_spawn = self.spawn_slimes[0]
         skeleton_spawn = self.spawn_sceletons[0]
@@ -332,8 +342,8 @@ class GameView(arcade.View):
                             hit = True
                             break
 
-            if not hit and (proj.center_x < -1000 or proj.center_x > 5000 or
-                           proj.center_y < -1000 or proj.center_y > 3000):
+            if not hit and (proj.center_x < -10000 or proj.center_x > 5000 or
+                           proj.center_y < -10000 or proj.center_y > 3000):
                 proj.remove_from_sprite_lists()
 
         # Обновление позиции камер
@@ -357,6 +367,7 @@ class GameView(arcade.View):
                     player.player_sprite.center_y + offset_y
                 )
                 setattr(self, f'shake_timer_p{i}', shake_timer - delta_time)
+
 
     def _draw_ui(self):
         if len(self.HP_bar_sprite_list) >= 2:
