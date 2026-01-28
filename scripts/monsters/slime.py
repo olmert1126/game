@@ -1,4 +1,5 @@
 import arcade
+import sqlite3
 
 class Slime:
     def __init__(self, x, y, collision_sprites, players, gravity=0.5, damage=45, damage_cooldown=1.0):
@@ -173,3 +174,15 @@ class Slime:
     def death(self):
         self.is_alive = False
         print("Slime умер!")
+
+        conn = sqlite3.connect('scripts/statistic.db')
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                "UPDATE statistic SET kills = kills + 1 WHERE monsters = ?",
+                ("slime",)
+            )
+            conn.commit()
+        finally:
+            conn.close()

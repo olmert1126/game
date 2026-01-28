@@ -1,4 +1,5 @@
 import arcade
+import sqlite3
 
 class Boss_skeleton:
     def __init__(self, x, y, collision_sprites, players, gravity=0.5, damage=30, attack_range=4000, attack_cooldown=2.0):
@@ -137,7 +138,7 @@ class Boss_skeleton:
 
         self.physics_engine.update()
 
-        for proj in self.projectiles[:]:
+        for proj in self.projectiles:
             proj.update()
             # Удаляем, если улетел слишком далеко
             if (abs(proj.center_x - self.skeleton_boss_sprite.center_x) > 5000 or
@@ -235,3 +236,15 @@ class Boss_skeleton:
     def death(self):
         self.is_alive = False
         print("boss умер!")
+
+        conn = sqlite3.connect('scripts/statistic.db')
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute(
+                "UPDATE statistic SET kills = kills + 1 WHERE monsters = ?",
+                ("boss_skeleton",)
+            )
+            conn.commit()
+        finally:
+            conn.close()
