@@ -3,7 +3,7 @@ import arcade
 
 class DeathKnight:
     def __init__(self, x, y, speed=100, scale=50, number_player=1, colision_sprites=None,
-                 jump_speed=40, gravity=7, hp=300, weapon=None):
+                 jump_speed=40, gravity=7, hp=400, weapon=None):
         self.speed = speed
         self.hp = hp
         self.max_hp = hp

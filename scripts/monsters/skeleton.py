@@ -28,7 +28,6 @@ class Skeleton:
         self.skeleton_sprite.center_x = self.center_x
         self.skeleton_sprite.center_y = self.center_y
 
-        # Защита от нулевых размеров
         if self.skeleton_sprite.width == 0 or self.skeleton_sprite.height == 0:
             self.skeleton_sprite.width = 80
             self.skeleton_sprite.height = 80
@@ -42,7 +41,7 @@ class Skeleton:
             gravity_constant=self.gravity,
         )
 
-        # === АНИМАЦИИ ===
+        # Анимации
         self.anim_run_right = [self.one_shot_run, self.two_shot_run, self.three_shot_run, self.four_shot_run]
         self.anim_run_left = [self.one_shot_run_left, self.two_shot_run_left, self.three_shot_run_left, self.four_shot_run_left]
         self.anim_attack_right = [self.one_shot_attack, self.two_shot_attack, self.three_shot_attack, self.four_shot_attack]
@@ -51,6 +50,10 @@ class Skeleton:
         self.current_texture_run = 0
         self.texture_change_time_run = 0
         self.texture_change_delay_run = 0.2
+
+        # === ОПТИМИЗАЦИЯ ===
+        self.update_radius = 1000  # радиус активности
+        self.max_arrows = 10      # максимум стрел
 
     def loading_texture(self):
         self.main_form = arcade.load_texture("models/monsters/skeleton/skeleton_main_form.png")
@@ -83,6 +86,8 @@ class Skeleton:
         self.current_texture_run = 0
 
     def _shoot_arrow(self, target_player):
+        if len(self.arrow_list) >= self.max_arrows:
+            return
         arrow = arcade.Sprite()
         arrow.center_x = self.skeleton_sprite.center_x
         arrow.center_y = self.skeleton_sprite.center_y + 10
@@ -112,9 +117,27 @@ class Skeleton:
         if not self.is_alive:
             return
 
+        # === ОПТИМИЗАЦИЯ: обновлять только если рядом игрок ===
+        should_update = False
+        for player in self.players:
+            if player.is_alive:
+                dist = arcade.get_distance_between_sprites(
+                    self.skeleton_sprite,
+                    player.player_sprite
+                )
+                if dist < self.update_radius:
+                    should_update = True
+                    break
+
+        if not should_update:
+            # Обновляем только физику, чтобы не проваливался
+            self.physics_engine.update()
+            return
+
         self.physics_engine.update()
 
-        for arrow in self.arrow_list:
+        # Обновление стрел
+        for arrow in self.arrow_list[:]:
             arrow.update()
             if arcade.check_for_collision_with_list(arrow, self.collision_sprites):
                 arrow.remove_from_sprite_lists()
@@ -131,6 +154,7 @@ class Skeleton:
                     arrow.remove_from_sprite_lists()
                     break
 
+        # Выбор цели
         target_player = None
         min_distance = float('inf')
         for player in self.players:
@@ -206,6 +230,7 @@ class Skeleton:
         cursor = conn.cursor()
 
         try:
+            # Исправлено: таблица называется 'monsters', а не 'statistic'
             cursor.execute(
                 "UPDATE statistic SET kills = kills + 1 WHERE monsters = ?",
                 ("skeleton",)

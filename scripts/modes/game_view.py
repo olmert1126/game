@@ -6,6 +6,7 @@ from arcade import LBWH
 from scripts.weapon.sword import Weapon as SwordWeapon
 from scripts.weapon.staff import StaffWeapon
 import random
+import time
 
 # Глобальные константы
 PLAYER_SIZE = 0.1
@@ -31,8 +32,10 @@ class GameView(arcade.View):
         self.camera_player1 = None
         self.camera_player2 = None
         self.ui_camera = None
-        self.slime = None
-        self.skeleton = None
+
+        # Списки монстров
+        self.slimes = []
+        self.skeletons = []
         self.boss_skeleton = None
         self.boss_spawned = False
         self.boss_spawn_point = None
@@ -54,9 +57,13 @@ class GameView(arcade.View):
         self.projectiles = arcade.SpriteList()
         self.summoned_skeletons = []
         self.spawned_slimes = []
+
+        self.victory_shown = False
+        self.victory_timer = 0.0
+
         self.loading_texture()
 
-        # Тексты для UI (чтобы избежать draw_text)
+        # UI тексты
         self.fps_text = arcade.Text("", 10, 30, arcade.color.WHITE, 16)
         self.death_text_p1 = arcade.Text("УМЕР", 0, 0, arcade.color.WHITE, 48, anchor_x="center", anchor_y="center")
         self.death_text_p2 = arcade.Text("УМЕР", 0, 0, arcade.color.WHITE, 48, anchor_x="center", anchor_y="center")
@@ -72,12 +79,17 @@ class GameView(arcade.View):
         self.game_over = False
         self.game_over_callback = None
 
+        # Лимит снарядов
+        self.max_projectiles = 20
+
     def setup(self, level=1):
         self.current_level = level
         self.all_monsters_defeated = False
         self.game_over = False
 
         # Очистка
+        self.slimes.clear()
+        self.skeletons.clear()
         self.summoned_skeletons.clear()
         self.spawned_slimes.clear()
         self.projectiles.clear()
@@ -85,25 +97,25 @@ class GameView(arcade.View):
         self.staff_collected = False
 
         map_name = f"models/map/test_map/map{level}.tmx"
-        test_map = arcade.load_tilemap(map_name, scaling=1.2)
+        test_map = arcade.load_tilemap(map_name, scaling=1.0)
 
         # Слои карты
         self.walls = test_map.sprite_lists.get("walls", arcade.SpriteList())
         self.platform = test_map.sprite_lists.get("platforms", arcade.SpriteList())
         self.invis = test_map.sprite_lists.get("invis", arcade.SpriteList())
 
-        # Слои спавна (безопасно!)
+        # Слои спавна
         self.spawn_slimes = test_map.sprite_lists.get("spawn_slimes", arcade.SpriteList())
         self.spawn_sceletons = test_map.sprite_lists.get("spawn_sceletons", arcade.SpriteList())
         self.spawn_players = test_map.sprite_lists.get("spawn_players", arcade.SpriteList())
         self.spawn_boss = test_map.sprite_lists.get("spawn_boss", arcade.SpriteList())
 
-        # Коллизии
-        all_collision = arcade.SpriteList()
+        # === Spatial hashing для коллизий ===
+        all_collision = arcade.SpriteList(use_spatial_hash=True, spatial_hash_cell_size=128)
         all_collision.extend(self.walls)
         all_collision.extend(self.platform)
 
-        self.collision_slime = arcade.SpriteList()
+        self.collision_slime = arcade.SpriteList(use_spatial_hash=True, spatial_hash_cell_size=128)
         self.collision_slime.extend(self.walls)
         self.collision_slime.extend(self.platform)
         self.collision_slime.extend(self.invis)
@@ -143,7 +155,6 @@ class GameView(arcade.View):
             p1_spawn = self.spawn_players[0]
             p2_spawn = self.spawn_players[1]
         else:
-            # Резервные координаты
             p1_spawn = type('Spawn', (), {'center_x': 100 + dx, 'center_y': 100 + dy})()
             p2_spawn = type('Spawn', (), {'center_x': 150 + dx, 'center_y': 100 + dy})()
 
@@ -175,30 +186,29 @@ class GameView(arcade.View):
         staff_sprite.center_x, staff_sprite.center_y = p2_spawn.center_x, p2_spawn.center_y
         self.staff_list.append(staff_sprite)
 
-        # Монстры
-        slime_spawn = self.spawn_slimes[0] if self.spawn_slimes else None
-        skeleton_spawn = self.spawn_sceletons[0] if self.spawn_sceletons else None
+        # === СПАВН ВСЕХ МОНСТРОВ ===
+        self.slimes = []
+        if self.spawn_slimes:
+            for spawn in self.spawn_slimes:
+                s = slime.Slime(
+                    x=spawn.center_x, y=spawn.center_y,
+                    collision_sprites=self.collision_slime,
+                    players=[self.player1, self.player2],
+                    gravity=GRAVITY, damage=SLIME_DAMAGE, damage_cooldown=DAMAGE_COOLDOWN
+                )
+                self.slimes.append(s)
 
-        if slime_spawn:
-            self.slime = slime.Slime(
-                x=slime_spawn.center_x, y=slime_spawn.center_y,
-                collision_sprites=self.collision_slime,
-                players=[self.player1, self.player2],
-                gravity=GRAVITY, damage=SLIME_DAMAGE, damage_cooldown=DAMAGE_COOLDOWN
-            )
-        else:
-            self.slime = None
-
-        if skeleton_spawn:
-            self.skeleton = skeleton.Skeleton(
-                x=skeleton_spawn.center_x, y=skeleton_spawn.center_y,
-                collision_sprites=self.collision_slime,
-                players=[self.player1, self.player2],
-                gravity=GRAVITY, damage=SKELETON_DAMAGE,
-                attack_range=SKELETON_ATTACK_RANGE, attack_cooldown=SKELETON_ATTACK_COOLDOWN
-            )
-        else:
-            self.skeleton = None
+        self.skeletons = []
+        if self.spawn_sceletons:
+            for spawn in self.spawn_sceletons:
+                sk = skeleton.Skeleton(
+                    x=spawn.center_x, y=spawn.center_y,
+                    collision_sprites=self.collision_slime,
+                    players=[self.player1, self.player2],
+                    gravity=GRAVITY, damage=SKELETON_DAMAGE,
+                    attack_range=SKELETON_ATTACK_RANGE, attack_cooldown=SKELETON_ATTACK_COOLDOWN
+                )
+                self.skeletons.append(sk)
 
         # Босс
         if self.spawn_boss:
@@ -223,17 +233,14 @@ class GameView(arcade.View):
         self.clear()
         arcade.set_background_color(arcade.color.BLACK)
 
-        # Левый экран
         self.camera_player1.use()
         self._draw_game_world()
         self.projectiles.draw()
 
-        # Правый экран
         self.camera_player2.use()
         self._draw_game_world()
         self.projectiles.draw()
 
-        # UI
         self.ui_camera.use()
         self._draw_ui()
         self.fps_text.draw()
@@ -255,7 +262,6 @@ class GameView(arcade.View):
             self.death_text_p2.position = (self.window.width * 3 // 4, self.window.height // 2)
             self.death_text_p2.draw()
 
-        # Полное поражение
         if self.game_over:
             arcade.draw_rect_filled(
                 LBWH(0, 0, self.window.width, self.window.height),
@@ -285,7 +291,19 @@ class GameView(arcade.View):
                     color=arcade.color.RED
                 )
 
+        if self.all_monsters_defeated and self.current_level == self.total_levels and self.victory_shown:
+            self.ui_camera.use()
+            victory_text = arcade.Text(
+                "ПОБЕДА!",
+                self.window.width // 2,
+                self.window.height // 2,
+                arcade.color.GREEN, 72, anchor_x="center", anchor_y="center"
+            )
+            victory_text.draw()
+
     def on_update(self, delta_time):
+        start_time = time.perf_counter()
+
         # FPS
         if delta_time > 0:
             instant_fps = 1.0 / delta_time
@@ -303,11 +321,13 @@ class GameView(arcade.View):
             self.player2.on_update(delta_time)
             self.player2.physics_engine.update()
 
-        # Монстры
-        if self.slime:
-            self.slime.on_update(delta_time)
-        if self.skeleton:
-            self.skeleton.on_update(delta_time)
+        # Обновление монстров — ОБЫЧНЫЙ on_update
+        for s in self.slimes:
+            if s.is_alive:
+                s.on_update(delta_time)
+        for sk in self.skeletons:
+            if sk.is_alive:
+                sk.on_update(delta_time)
 
         # Активация босса
         if not self.boss_spawned and self.boss_spawn_point:
@@ -325,10 +345,9 @@ class GameView(arcade.View):
                     attack_cooldown=SKELETON_ATTACK_COOLDOWN
                 )
                 self.boss_spawned = True
-                print("✅ Босс активирован!")
+                print(" Босс активирован!")
 
-        # Обновление босса
-        if self.boss_skeleton:
+        if self.boss_skeleton and self.boss_skeleton.is_alive:
             self.boss_skeleton.on_update(delta_time)
 
         # Призыв скелетов
@@ -403,36 +422,38 @@ class GameView(arcade.View):
                 self.staff_list.clear()
 
         # Урон от монстров
-        targets = [
-            self.slime,
-            self.skeleton,
-            self.boss_skeleton,
-            *self.summoned_skeletons,
-            *self.spawned_slimes
-        ]
-        for target in targets:
-            if target and target.is_alive:
-                sprite_attr = 'slime_sprite' if isinstance(target, slime.Slime) else 'skeleton_sprite'
-                if hasattr(target, 'skeleton_boss_sprite'):
-                    sprite_attr = 'skeleton_boss_sprite'
-                sprite = getattr(target, sprite_attr)
-                self._check_attack_hit(self.player1, sprite, target)
+        all_monsters = (
+            [m for m in self.slimes if m.is_alive] +
+            [m for m in self.skeletons if m.is_alive] +
+            ([self.boss_skeleton] if self.boss_skeleton and self.boss_skeleton.is_alive else []) +
+            [m for m in self.summoned_skeletons if m.is_alive] +
+            [m for m in self.spawned_slimes if m.is_alive]
+        )
+        for target in all_monsters:
+            if isinstance(target, slime.Slime):
+                sprite = target.slime_sprite
+            elif hasattr(target, 'skeleton_boss_sprite'):
+                sprite = target.skeleton_boss_sprite
+            else:
+                sprite = target.skeleton_sprite
+            self._check_attack_hit(self.player1, sprite, target)
 
-        # Снаряды игроков
+        # Снаряды игроков (с лимитом!)
         for proj in self.projectiles:
             proj.update(delta_time)
             hit = False
-            all_targets = [self.slime, self.skeleton, self.boss_skeleton] + self.summoned_skeletons + self.spawned_slimes
-            for target in all_targets:
-                if target and target.is_alive:
-                    attr = 'slime_sprite' if isinstance(target, slime.Slime) else 'skeleton_sprite'
-                    if hasattr(target, 'skeleton_boss_sprite'):
-                        attr = 'skeleton_boss_sprite'
-                    if arcade.check_for_collision(proj, getattr(target, attr)):
-                        target.take_damage(proj.damage)
-                        proj.remove_from_sprite_lists()
-                        hit = True
-                        break
+            for target in all_monsters:
+                if isinstance(target, slime.Slime):
+                    sprite = target.slime_sprite
+                elif hasattr(target, 'skeleton_boss_sprite'):
+                    sprite = target.skeleton_boss_sprite
+                else:
+                    sprite = target.skeleton_sprite
+                if arcade.check_for_collision(proj, sprite):
+                    target.take_damage(proj.damage)
+                    proj.remove_from_sprite_lists()
+                    hit = True
+                    break
             if not hit and (abs(proj.center_x) > 10000 or abs(proj.center_y) > 10000):
                 proj.remove_from_sprite_lists()
 
@@ -456,26 +477,63 @@ class GameView(arcade.View):
 
         # Проверка победы
         if not self.all_monsters_defeated and not self.game_over:
-            monsters_alive = []
-            for target in [self.slime, self.skeleton, self.boss_skeleton] + self.summoned_skeletons + self.spawned_slimes:
-                if target and target.is_alive:
-                    monsters_alive.append(True)
-            if not monsters_alive:
+            victory_achieved = False
+
+            if self.current_level == 1:
+                # Уровень 1: все монстры мертвы
+                monsters_alive = False
+                for target in all_monsters:
+                    if target and target.is_alive:
+                        monsters_alive = True
+                        break
+                victory_achieved = not monsters_alive
+
+            elif self.current_level == 2:
+                # Уровень 2: босс мёртв
+                victory_achieved = (
+                        self.boss_skeleton is not None and
+                        not self.boss_skeleton.is_alive
+                )
+
+            if victory_achieved:
                 self.all_monsters_defeated = True
                 if self.current_level < self.total_levels:
                     print(f"✅ Уровень {self.current_level} завершён! Загрузка уровня {self.current_level + 1}...")
                     self.setup(level=self.current_level + 1)
                 else:
                     print("🎉 Все уровни пройдены!")
+                    self.victory_shown = True
+
+                    def go_to_menu(dt):
+                        from scripts.modes.start_view import StartView
+                        self.window.show_view(StartView())
+
+                    self._victory_schedule = go_to_menu  # ← сохраняем ссылку
+                    arcade.schedule(self._victory_schedule, 2.0)
 
         # Поражение
         if not self.game_over and not self.player1.is_alive and not self.player2.is_alive:
             self.game_over = True
-            from scripts.modes.start_view import StartView
             def return_to_menu(dt):
+                from scripts.modes.start_view import StartView
                 self.window.show_view(StartView())
             self.game_over_callback = return_to_menu
             arcade.schedule(self.game_over_callback, 2.0)
+
+        # Профилирование
+        end_time = time.perf_counter()
+        frame_time = (end_time - start_time) * 1000
+        if frame_time > 20:
+            print(f"⚠️ Кадр занял {frame_time:.1f} мс ({1000/frame_time:.1f} FPS)")
+
+    def on_key_press(self, key, modifiers):
+        if self.player1.is_alive:
+            self.player1.on_key_press(key, modifiers)
+        if self.player2.is_alive:
+            if len(self.projectiles) < self.max_projectiles:
+                proj = self.player2.on_key_press(key, modifiers)
+                if proj:
+                    self.projectiles.append(proj)
 
     def _draw_ui(self):
         if len(self.HP_bar_sprite_list) >= 2:
@@ -490,13 +548,11 @@ class GameView(arcade.View):
     def draw_hp_fill(self):
         if not self.player1.is_alive and not self.player2.is_alive:
             return
-
         bar_width = self.HP_bar.width * 0.5
         bar_height = self.HP_bar.height * 0.5
         padding = 30
         inner_height = 50
         inner_width = bar_width - 2 * padding
-
         for i, player in enumerate([self.player1, self.player2], start=1):
             if player.is_alive:
                 ratio = max(0.0, min(1.0, player.hp / player.max_hp))
@@ -514,9 +570,12 @@ class GameView(arcade.View):
         if self.player2.is_alive: self.player2.draw()
         if not self.sword_collected: self.sword_list.draw()
         if not self.staff_collected: self.staff_list.draw()
-        if self.slime and self.slime.is_alive: self.slime.draw()
-        if self.skeleton and self.skeleton.is_alive: self.skeleton.draw()
-        if self.boss_skeleton and self.boss_skeleton.is_alive: self.boss_skeleton.draw()
+        for s in self.slimes:
+            if s.is_alive: s.draw()
+        for sk in self.skeletons:
+            if sk.is_alive: sk.draw()
+        if self.boss_skeleton and self.boss_skeleton.is_alive:
+            self.boss_skeleton.draw()
         for skel in self.summoned_skeletons:
             if skel.is_alive: skel.draw()
         for s in self.spawned_slimes:
@@ -537,14 +596,6 @@ class GameView(arcade.View):
             sprite2.center_x -= norm_x * overlap
             sprite2.center_y -= norm_y * overlap
 
-    def on_key_press(self, key, modifiers):
-        if self.player1.is_alive:
-            self.player1.on_key_press(key, modifiers)
-        if self.player2.is_alive:
-            proj = self.player2.on_key_press(key, modifiers)
-            if proj:
-                self.projectiles.append(proj)
-
     def on_key_release(self, key, modifiers):
         if self.player1.is_alive:
             self.player1.on_key_release(key, modifiers)
@@ -560,21 +611,17 @@ class GameView(arcade.View):
             return False
         if getattr(player, 'has_dealt_damage_this_attack', False):
             return False
-
         attack_range = player.weapon.attack_range
         attack_width = player.weapon.attack_width
         attack_height = player.weapon.attack_height
-
         if player.facing == "right":
             hit_left = player.player_sprite.center_x
             hit_right = player.player_sprite.center_x + attack_range
         else:
             hit_left = player.player_sprite.center_x - attack_range
             hit_right = player.player_sprite.center_x
-
         hit_bottom = player.player_sprite.center_y - attack_height / 2
         hit_top = player.player_sprite.center_y + attack_height / 2
-
         if (hit_left < target_sprite.right and
             hit_right > target_sprite.left and
             hit_bottom < target_sprite.top and
@@ -588,6 +635,19 @@ class GameView(arcade.View):
         if self.bgm_player:
             arcade.stop_sound(self.bgm_player)
         self.bgm_player = None
-        if self.game_over_callback:
-            arcade.unschedule(self.game_over_callback)
+
+        # Отменяем таймер поражения
+        if hasattr(self, 'game_over_callback') and self.game_over_callback:
+            try:
+                arcade.unschedule(self.game_over_callback)
+            except ValueError:
+                pass  # уже отменён
             self.game_over_callback = None
+
+        # Отменяем таймер победы
+        if hasattr(self, '_victory_schedule') and self._victory_schedule:
+            try:
+                arcade.unschedule(self._victory_schedule)
+            except ValueError:
+                pass  # уже отменён
+            self._victory_schedule = None

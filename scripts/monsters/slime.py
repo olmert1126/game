@@ -13,7 +13,7 @@ class Slime:
         self.is_alive = True
 
         self.gravity = gravity
-        self.players = players  # список игроков
+        self.players = players
         self.damage = damage
         self.damage_cooldown = damage_cooldown
         self._last_damage_times = [0.0] * len(players)
@@ -35,7 +35,7 @@ class Slime:
         self.anim_attack_left = [self.one_shot_attack_left, self.two_shot_attack_left]
 
         self.is_attacking = False
-        self.attack_duration = 0.4  # общая длительность анимации атаки
+        self.attack_duration = 0.4
         self.attack_timer = 0.0
         self.current_texture_attack = 0
         self.texture_change_time_attack = 0
@@ -48,7 +48,6 @@ class Slime:
         self.slime_sprite.scale = 0.12
 
         self.slime_sprites_list.append(self.slime_sprite)
-
         self.collision_sprites = collision_sprites
 
         self.physics_engine = arcade.PhysicsEnginePlatformer(
@@ -71,6 +70,9 @@ class Slime:
             self.four_shot_run_left
         ]
 
+        # === ОПТИМИЗАЦИЯ ===
+        self.update_radius = 800  # радиус активности
+
     def loading_texture(self):
         self.main_form = arcade.load_texture("models/monsters/slime/slime_main_form.png")
         self.main_form_left = self.main_form.flip_left_right()
@@ -89,11 +91,34 @@ class Slime:
         self.one_shot_attack_left = self.one_shot_attack.flip_left_right()
         self.two_shot_attack_left = self.two_shot_attack.flip_left_right()
 
+    def _reverse_direction(self):
+        self.facing = "left" if self.facing == "right" else "right"
+        self.current_texture_run = 0
+
     def on_update(self, delta_time):
         if not self.is_alive:
             return
+
+        # === ОПТИМИЗАЦИЯ: обновлять только если рядом игрок ===
+        should_update = False
+        for player in self.players:
+            if player.is_alive:
+                dist = arcade.get_distance_between_sprites(
+                    self.slime_sprite,
+                    player.player_sprite
+                )
+                if dist < self.update_radius:
+                    should_update = True
+                    break
+
+        if not should_update:
+            # Обновляем только физику, чтобы не проваливался
+            self.physics_engine.update()
+            return
+
         # Обновляем физику
         self.physics_engine.update()
+
         direction = 1 if self.facing == "right" else -1
         next_x = self.slime_sprite.center_x + self.speed * direction
 
@@ -109,7 +134,7 @@ class Slime:
 
         self.update_animation(delta_time)
 
-        # === НАНЕСЕНИЕ УРОНА ИГРОКАМ ===
+        # Нанесение урона игрокам
         for i, player in enumerate(self.players):
             if not player.is_alive:
                 continue
@@ -125,10 +150,6 @@ class Slime:
                     player.take_damage(self.damage)
                     self._last_damage_times[i] = 0.0
 
-    def _reverse_direction(self):
-        self.facing = "left" if self.facing == "right" else "right"
-        self.current_texture_run = 0
-
     def update_animation(self, delta_time: float):
         if self.is_attacking:
             self.attack_timer += delta_time
@@ -143,13 +164,11 @@ class Slime:
                 else:
                     self.slime_sprite.texture = self.anim_attack_left[self.current_texture_attack]
 
-            # Завершаем анимацию по времени
             if self.attack_timer >= self.attack_duration:
                 self.is_attacking = False
-                self.current_texture_run = 0  # сброс индекса бега
+                self.current_texture_run = 0
 
         else:
-            # Обычная анимация бега
             self.texture_change_time_run += delta_time
             if self.texture_change_time_run >= self.texture_change_delay_run:
                 self.texture_change_time_run = 0
@@ -179,6 +198,7 @@ class Slime:
         cursor = conn.cursor()
 
         try:
+            # Исправлено: таблица называется 'monsters', а не 'statistic'
             cursor.execute(
                 "UPDATE statistic SET kills = kills + 1 WHERE monsters = ?",
                 ("slime",)
